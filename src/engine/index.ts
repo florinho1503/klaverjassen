@@ -10,3 +10,4 @@ export * from "./analyze";
 export * from "./mediumBot";
 export * from "./montecarlo";
 export * from "./bidding";
+export * from "./coach";

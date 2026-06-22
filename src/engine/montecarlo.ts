@@ -162,41 +162,55 @@ export interface MonteCarloOptions {
   rng?: Rng;
 }
 
-export function makeMonteCarloBot(options: MonteCarloOptions = {}): Bot {
+export interface MoveValue {
+  card: Card;
+  /** Gemiddeld puntenverschil (mijn team − tegenpartij) over de uitdelingen. */
+  value: number;
+}
+
+/**
+ * Scoort elke legale zet via Monte-Carlo en geeft het gemiddelde puntenverschil
+ * (vanuit het team aan zet). Hergebruikt door de bot én de review-coach.
+ */
+export function evaluateMoves(round: Round, options: MonteCarloOptions = {}): MoveValue[] {
   const N = options.determinizations ?? 60;
   const rng = options.rng ?? Math.random;
 
+  const legal = round.legalMoves();
+  if (legal.length === 0) return [];
+
+  const a = analyzeRound(round);
+  const myTeam: Team = a.team;
+  const counts = [0, 1, 2, 3].map((s) => round.handOf(s as Seat).length);
+  const totals = legal.map(() => 0);
+  let samples = 0;
+
+  for (let i = 0; i < N; i++) {
+    const sampled = sampleDeal(a.myHand, a.me, a.unseen, counts, a.voids, rng);
+    if (!sampled) continue;
+    samples++;
+    legal.forEach((move, idx) => {
+      const tricks = simulateMove(round, sampled, move);
+      const res = scoreRound({
+        contract: round.contract,
+        bid: round.bid,
+        makerTeam: round.makerTeam,
+        tricks,
+      });
+      totals[idx] += res.points[myTeam] - res.points[myTeam === 0 ? 1 : 0];
+    });
+  }
+
+  return legal.map((card, idx) => ({ card, value: samples ? totals[idx] / samples : 0 }));
+}
+
+export function makeMonteCarloBot(options: MonteCarloOptions = {}): Bot {
   return (round: Round): Card => {
     const legal = round.legalMoves();
     if (legal.length === 1) return legal[0];
-
-    const a = analyzeRound(round);
-    const myTeam: Team = a.team;
-    const counts = [0, 1, 2, 3].map((s) => round.handOf(s as Seat).length);
-    const totals = legal.map(() => 0);
-    let samples = 0;
-
-    for (let i = 0; i < N; i++) {
-      const sampled = sampleDeal(a.myHand, a.me, a.unseen, counts, a.voids, rng);
-      if (!sampled) continue;
-      samples++;
-      legal.forEach((move, idx) => {
-        const tricks = simulateMove(round, sampled, move);
-        const res = scoreRound({
-          contract: round.contract,
-          bid: round.bid,
-          makerTeam: round.makerTeam,
-          tricks,
-        });
-        totals[idx] += res.points[myTeam] - res.points[myTeam === 0 ? 1 : 0];
-      });
-    }
-
-    if (samples === 0) return mediumBot(round); // fallback als sampelen faalt
-
-    let bestIdx = 0;
-    for (let i = 1; i < legal.length; i++) if (totals[i] > totals[bestIdx]) bestIdx = i;
-    return legal[bestIdx];
+    const values = evaluateMoves(round, options);
+    if (values.length === 0) return mediumBot(round); // fallback als sampelen faalt
+    return values.reduce((best, x) => (x.value > best.value ? x : best)).card;
   };
 }
 

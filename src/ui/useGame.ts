@@ -10,9 +10,12 @@ import {
   Card,
   Contract,
   Difficulty,
+  HumanBidTurn,
   Play,
   Round,
+  RoundRecord,
   RoundResult,
+  RoundReview,
   SUITS,
   Seat,
   Team,
@@ -22,6 +25,7 @@ import {
   deal,
   explainIllegal,
   nextSeat,
+  reviewRound,
   roundFromAuction,
 } from "../engine";
 
@@ -108,6 +112,10 @@ export interface GameView {
   gameOver: boolean;
   /** Winnend team na afloop, of null bij gelijkspel / nog bezig. */
   winner: Team | null;
+  /** Kan de afgelopen ronde door de coach worden nagekeken? */
+  canReview: boolean;
+  /** Het review-resultaat van de coach, of null. */
+  review: RoundReview | null;
 }
 
 export interface GameApi {
@@ -118,6 +126,8 @@ export interface GameApi {
   continueTrick: () => void;
   nextRound: () => void;
   newGame: () => void;
+  requestReview: () => void;
+  closeReview: () => void;
 }
 
 export function useGame(): GameApi {
@@ -135,6 +145,9 @@ export function useGame(): GameApi {
   const pausedRef = useRef(false);
   const errorRef = useRef<PlayError | null>(null);
   const errorNonceRef = useRef(0);
+  const recordRef = useRef<RoundRecord | null>(null);
+  const humanBidsRef = useRef<HumanBidTurn[]>([]);
+  const reviewRef = useRef<RoundReview | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -244,6 +257,8 @@ export function useGame(): GameApi {
       telstaat: historyRef.current,
       gameOver,
       winner,
+      canReview: phase === "klaar" && recordRef.current !== null,
+      review: reviewRef.current,
     };
   }, []);
 
@@ -258,6 +273,9 @@ export function useGame(): GameApi {
       messageRef.current = null;
       pausedRef.current = false;
       errorRef.current = null;
+      recordRef.current = null;
+      reviewRef.current = null;
+      humanBidsRef.current = [];
       phaseRef.current = "bieden";
       sync();
     },
@@ -285,6 +303,17 @@ export function useGame(): GameApi {
         pitTeam: result.pitTeam,
       },
     ];
+    // Leg de ronde vast zodat de coach 'm later kan nakijken.
+    recordRef.current = {
+      hands: handsRef.current.map((h) => [...h]),
+      contract: round.contract,
+      makerTeam: round.makerTeam,
+      bid: round.bid,
+      firstLeader: nextSeat(dealerRef.current),
+      sequence: round.tricks.flatMap((t) => t.plays.map((p) => ({ seat: p.seat, card: p.card }))),
+      reviewSeat: HUMAN,
+      humanBids: humanBidsRef.current,
+    };
     phaseRef.current = "klaar";
     sync();
   }, [sync]);
@@ -354,6 +383,19 @@ export function useGame(): GameApi {
     auctionRef.current = null;
     resultRef.current = null;
     messageRef.current = null;
+    recordRef.current = null;
+    reviewRef.current = null;
+    sync();
+  }, [sync]);
+
+  const requestReview = useCallback(() => {
+    if (!recordRef.current) return;
+    reviewRef.current = reviewRound(recordRef.current, { determinizations: 80, rng: Math.random });
+    sync();
+  }, [sync]);
+
+  const closeReview = useCallback(() => {
+    reviewRef.current = null;
     sync();
   }, [sync]);
 
@@ -428,6 +470,10 @@ export function useGame(): GameApi {
     (action: BidAction) => {
       const auction = auctionRef.current;
       if (!auction || auction.currentSeat !== HUMAN) return;
+      humanBidsRef.current = [
+        ...humanBidsRef.current,
+        { highest: auction.currentHighest?.bid.value ?? null, action },
+      ];
       applyBid(action);
     },
     [applyBid],
@@ -445,5 +491,15 @@ export function useGame(): GameApi {
     [],
   );
 
-  return { view: buildView(), begin, humanPlay, humanBid, continueTrick, nextRound, newGame };
+  return {
+    view: buildView(),
+    begin,
+    humanPlay,
+    humanBid,
+    continueTrick,
+    nextRound,
+    newGame,
+    requestReview,
+    closeReview,
+  };
 }

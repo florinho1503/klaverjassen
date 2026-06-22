@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BidAction, Card, Contract, Difficulty, Seat, cardEquals } from "./engine";
-import { AuctionLogEntry } from "./engine";
+import { AuctionLogEntry, DecisionReview, RoundReview, Verdict } from "./engine";
 import { CardBack, CardView } from "./ui/CardView";
 import {
   SEAT_NAME,
@@ -142,7 +142,17 @@ function StartScreen({ onStart }: { onStart: (d: Difficulty, t: GameTarget) => v
 }
 
 export function App() {
-  const { view, begin, humanPlay, humanBid, continueTrick, nextRound, newGame } = useGame();
+  const {
+    view,
+    begin,
+    humanPlay,
+    humanBid,
+    continueTrick,
+    nextRound,
+    newGame,
+    requestReview,
+    closeReview,
+  } = useGame();
 
   if (view.phase === "start") {
     return <StartScreen onStart={begin} />;
@@ -150,6 +160,7 @@ export function App() {
 
   return (
     <div className="app">
+      {view.review && <ReviewOverlay review={view.review} onClose={closeReview} />}
       <header className="topbar">
         <div className="topbar__left">
           <h1>Klaverjassen oefenen</h1>
@@ -186,6 +197,7 @@ export function App() {
         onNext={nextRound}
         onContinue={continueTrick}
         onNewGame={newGame}
+        onReview={requestReview}
       />
     </div>
   );
@@ -538,27 +550,36 @@ function Panel({
   onNext,
   onContinue,
   onNewGame,
+  onReview,
 }: {
   view: GameView;
   onBid: (a: BidAction) => void;
   onNext: () => void;
   onContinue: () => void;
   onNewGame: () => void;
+  onReview: () => void;
 }) {
   if (view.phase === "klaar") {
     return (
       <div className="panel">
         {view.gameOver ? <GameOver view={view} /> : <RoundSummary view={view} />}
         <Telstaat rows={view.telstaat} totals={view.totalScore} />
-        {view.gameOver ? (
-          <button className="btn btn--primary" onClick={onNewGame}>
-            Nieuw potje
-          </button>
-        ) : (
-          <button className="btn btn--primary" onClick={onNext}>
-            Volgende ronde
-          </button>
-        )}
+        <div className="panel__actions">
+          {view.canReview && (
+            <button className="btn" onClick={onReview}>
+              🎓 Bekijk je ronde
+            </button>
+          )}
+          {view.gameOver ? (
+            <button className="btn btn--primary" onClick={onNewGame}>
+              Nieuw potje
+            </button>
+          ) : (
+            <button className="btn btn--primary" onClick={onNext}>
+              Volgende ronde
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -708,6 +729,72 @@ function Telstaat({ rows, totals }: { rows: TelstaatRow[]; totals: [number, numb
           </tr>
         </tfoot>
       </table>
+    </div>
+  );
+}
+
+const VERDICT_META: Record<Verdict, { icon: string; cls: string }> = {
+  goed: { icon: "✅", cls: "verdict--goed" },
+  twijfel: { icon: "⚠️", cls: "verdict--twijfel" },
+  fout: { icon: "❌", cls: "verdict--fout" },
+};
+
+function MiniTrick({ plays, played }: { plays: { seat: Seat; card: Card }[]; played: Card }) {
+  return (
+    <div className="minitrick">
+      {plays.map((p, i) => (
+        <CardView key={i} card={p.card} />
+      ))}
+      <span className="minitrick__arrow">→</span>
+      <CardView card={played} />
+    </div>
+  );
+}
+
+function DecisionRow({ d }: { d: DecisionReview }) {
+  const m = VERDICT_META[d.verdict];
+  return (
+    <div className={`decision ${m.cls}`}>
+      <div className="decision__head">
+        <span>{m.icon}</span>
+        <span>Slag {d.trickNumber}</span>
+      </div>
+      <MiniTrick plays={d.trickSoFar} played={d.playedCard} />
+      {d.verdict !== "goed" && (
+        <div className="decision__better">
+          Beter was: <CardView card={d.bestCard} />
+        </div>
+      )}
+      <p className="decision__text">{d.explanation}</p>
+    </div>
+  );
+}
+
+function ReviewOverlay({ review, onClose }: { review: RoundReview; onClose: () => void }) {
+  const bm = VERDICT_META[review.bid.verdict];
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="reviewcard" onClick={(e) => e.stopPropagation()}>
+        <div className="reviewcard__head">
+          <h2>🎓 Coach — jouw ronde</h2>
+          <button type="button" className="btn" onClick={onClose}>
+            Sluiten
+          </button>
+        </div>
+        <div className="reviewsummary">
+          ✅ {review.good} goed · ⚠️ {review.doubtful} twijfel · ❌ {review.mistakes} fout
+        </div>
+        <div className={`bidreview ${bm.cls}`}>
+          <strong>{bm.icon} Bod:</strong> {review.bid.explanation}
+        </div>
+        <div className="decisions">
+          {review.decisions.length === 0 ? (
+            <p className="decision__text">Geen beslissingen om na te kijken in deze ronde.</p>
+          ) : (
+            review.decisions.map((d, i) => <DecisionRow key={i} d={d} />)
+          )}
+        </div>
+      </div>
     </div>
   );
 }
