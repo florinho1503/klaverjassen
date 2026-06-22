@@ -6,4 +6,6 @@ export * from "./scoring";
 export * from "./deal";
 export * from "./round";
 export * from "./bot";
+export * from "./analyze";
+export * from "./mediumBot";
 export * from "./bidding";
