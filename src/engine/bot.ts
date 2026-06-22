@@ -13,6 +13,23 @@ import { partnerOf, trickWinnerSeat } from "./trick";
 
 export type Bot = (round: Round) => Card;
 
+export type Difficulty = "makkelijk" | "middel" | "moeilijk";
+
+/**
+ * Kies de speelbot voor een niveau. Middel/moeilijk vallen voorlopig terug op
+ * de heuristische bot; ze worden in fase 2 en 3 vervangen.
+ */
+export function cardBotFor(difficulty: Difficulty): Bot {
+  switch (difficulty) {
+    case "makkelijk":
+      return heuristicBot;
+    case "middel":
+      return heuristicBot; // TODO fase 2: mediumBot
+    case "moeilijk":
+      return heuristicBot; // TODO fase 3: hardBot
+  }
+}
+
 export function randomBot(rng: Rng = Math.random): Bot {
   return (round) => {
     const legal = round.legalMoves();

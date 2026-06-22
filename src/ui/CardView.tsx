@@ -6,14 +6,16 @@ interface Props {
   onClick?: () => void;
   playable?: boolean;
   dimmed?: boolean;
+  error?: boolean;
 }
 
-export function CardView({ card, onClick, playable, dimmed }: Props) {
+export function CardView({ card, onClick, playable, dimmed, error }: Props) {
   const cls = [
     "card",
     isRed(card.suit) ? "card--red" : "card--black",
     playable ? "card--playable" : "",
     dimmed ? "card--dimmed" : "",
+    error ? "card--error" : "",
   ]
     .filter(Boolean)
     .join(" ");

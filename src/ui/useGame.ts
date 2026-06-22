@@ -9,15 +9,17 @@ import {
   BidAction,
   Card,
   Contract,
+  Difficulty,
   Play,
   Round,
   RoundResult,
   SUITS,
   Seat,
   biddingBot,
+  cardBotFor,
   cardEquals,
   deal,
-  heuristicBot,
+  explainIllegal,
   nextSeat,
   roundFromAuction,
 } from "../engine";
@@ -26,8 +28,15 @@ export const HUMAN: Seat = 2;
 // Bedenktijd voor de bots — bewust ~3s voor een echt spelgevoel.
 const BID_DELAY_MS = 3000;
 const PLAY_DELAY_MS = 3000;
+const ERROR_CLEAR_MS = 2600;
 
-export type Phase = "bieden" | "spelen" | "klaar";
+export type Phase = "start" | "bieden" | "spelen" | "klaar";
+
+export interface PlayError {
+  message: string;
+  card: Card;
+  nonce: number;
+}
 
 export interface BidOption {
   contract: Contract;
@@ -36,6 +45,11 @@ export interface BidOption {
 
 export interface GameView {
   phase: Phase;
+  difficulty: Difficulty | null;
+  /** Of geldige kaarten opgelicht worden (alleen op 'makkelijk'). */
+  assist: boolean;
+  /** Foutmelding bij een ongeldige zet (middel/moeilijk), of null. */
+  error: PlayError | null;
   dealer: Seat;
   currentSeat: Seat;
   /** Hand van de mens (Zuid). Tijdens bieden de volle hand, tijdens spelen de rest. */
@@ -72,6 +86,7 @@ export interface GameView {
 
 export interface GameApi {
   view: GameView;
+  begin: (difficulty: Difficulty) => void;
   humanPlay: (card: Card) => void;
   humanBid: (action: BidAction) => void;
   continueTrick: () => void;
@@ -83,13 +98,16 @@ export function useGame(): GameApi {
   const roundRef = useRef<Round | null>(null);
   const handsRef = useRef<Card[][]>([]);
   const dealerRef = useRef<Seat>(3); // mens (Zuid) opent dan het bieden
-  const phaseRef = useRef<Phase>("bieden");
+  const phaseRef = useRef<Phase>("start");
+  const difficultyRef = useRef<Difficulty | null>(null);
   const messageRef = useRef<string | null>(null);
   const resultRef = useRef<RoundResult | null>(null);
   const totalRef = useRef<[number, number]>([0, 0]);
   const pausedRef = useRef(false);
+  const errorRef = useRef<PlayError | null>(null);
+  const errorNonceRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const startedRef = useRef(false);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [, setTick] = useState(0);
   const sync = useCallback(() => setTick((t) => t + 1), []);
@@ -128,9 +146,17 @@ export function useGame(): GameApi {
         : [];
 
     const paused = pausedRef.current;
+    const difficulty = difficultyRef.current;
+    const assist = difficulty === "makkelijk";
 
+    // Geldige kaarten alleen oplichten op 'makkelijk'.
     const legalForHuman =
-      phase === "spelen" && !paused && round && !round.isComplete && round.currentSeat === HUMAN
+      assist &&
+      phase === "spelen" &&
+      !paused &&
+      round &&
+      !round.isComplete &&
+      round.currentSeat === HUMAN
         ? round.legalMoves()
         : [];
 
@@ -145,6 +171,9 @@ export function useGame(): GameApi {
 
     return {
       phase,
+      difficulty,
+      assist,
+      error: errorRef.current,
       dealer: dealerRef.current,
       currentSeat,
       humanHand,
@@ -179,6 +208,7 @@ export function useGame(): GameApi {
       resultRef.current = null;
       messageRef.current = null;
       pausedRef.current = false;
+      errorRef.current = null;
       phaseRef.current = "bieden";
       sync();
     },
@@ -240,12 +270,15 @@ export function useGame(): GameApi {
     [finalizeRound, sync],
   );
 
-  // Eerste hand starten (één keer, ook onder StrictMode).
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    startHand(dealerRef.current);
-  }, [startHand]);
+  const begin = useCallback(
+    (difficulty: Difficulty) => {
+      difficultyRef.current = difficulty;
+      totalRef.current = [0, 0];
+      dealerRef.current = 3;
+      startHand(dealerRef.current);
+    },
+    [startHand],
+  );
 
   // Bots laten handelen wanneer zij aan de beurt zijn.
   useEffect(() => {
@@ -262,9 +295,11 @@ export function useGame(): GameApi {
       }
     } else if (phase === "spelen" && !pausedRef.current) {
       const round = roundRef.current;
-      if (round && !round.isComplete && round.currentSeat !== HUMAN) {
+      const difficulty = difficultyRef.current;
+      if (round && difficulty && !round.isComplete && round.currentSeat !== HUMAN) {
+        const bot = cardBotFor(difficulty);
         timerRef.current = setTimeout(() => {
-          applyPlay(heuristicBot(round));
+          applyPlay(bot(round));
         }, PLAY_DELAY_MS);
       }
     }
@@ -278,10 +313,32 @@ export function useGame(): GameApi {
     (card: Card) => {
       const round = roundRef.current;
       if (!round || pausedRef.current || round.currentSeat !== HUMAN) return;
-      if (!round.legalMoves().some((c) => cardEquals(c, card))) return;
+
+      if (!round.legalMoves().some((c) => cardEquals(c, card))) {
+        // Ongeldige zet → toon de reden en laat de kaart schudden.
+        const reason =
+          explainIllegal(
+            card,
+            [...round.handOf(HUMAN)],
+            [...round.currentTrick],
+            round.contract,
+            HUMAN,
+          ) ?? "Ongeldige zet.";
+        errorNonceRef.current += 1;
+        errorRef.current = { message: reason, card, nonce: errorNonceRef.current };
+        if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+        errorTimerRef.current = setTimeout(() => {
+          errorRef.current = null;
+          sync();
+        }, ERROR_CLEAR_MS);
+        sync();
+        return;
+      }
+
+      errorRef.current = null;
       applyPlay(card);
     },
-    [applyPlay],
+    [applyPlay, sync],
   );
 
   const continueTrick = useCallback(() => {
@@ -303,5 +360,13 @@ export function useGame(): GameApi {
     startHand(nextSeat(dealerRef.current));
   }, [startHand]);
 
-  return { view: buildView(), humanPlay, humanBid, continueTrick, nextRound };
+  // Opruimen bij unmount.
+  useEffect(
+    () => () => {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    },
+    [],
+  );
+
+  return { view: buildView(), begin, humanPlay, humanBid, continueTrick, nextRound };
 }

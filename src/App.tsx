@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BidAction, Card, Contract, Seat, cardEquals } from "./engine";
+import { BidAction, Card, Contract, Difficulty, Seat, cardEquals } from "./engine";
 import { AuctionLogEntry } from "./engine";
 import { CardBack, CardView } from "./ui/CardView";
 import {
@@ -12,14 +12,59 @@ import {
 import { BidOption, GameView, HUMAN, useGame } from "./ui/useGame";
 import "./App.css";
 
+const LEVEL_META: Record<Difficulty, { emoji: string; label: string; desc: string }> = {
+  makkelijk: {
+    emoji: "🟢",
+    label: "Makkelijk",
+    desc: "Beginnersbots. Geldige kaarten worden voor je opgelicht.",
+  },
+  middel: {
+    emoji: "🟡",
+    label: "Middel",
+    desc: "Slimmere bots (kaartgeheugen, troefbeheer, seinen). Geen hulp — je krijgt een foutmelding bij een ongeldige zet.",
+  },
+  moeilijk: {
+    emoji: "🔴",
+    label: "Moeilijk",
+    desc: "Sterke bots. Geen hulp — je krijgt een foutmelding bij een ongeldige zet.",
+  },
+};
+
+function StartScreen({ onChoose }: { onChoose: (d: Difficulty) => void }) {
+  return (
+    <div className="startscreen">
+      <h1>Klaverjassen oefenen</h1>
+      <p className="startscreen__sub">Kies je niveau</p>
+      <div className="startscreen__levels">
+        {(Object.keys(LEVEL_META) as Difficulty[]).map((d) => (
+          <button key={d} type="button" className="levelcard" onClick={() => onChoose(d)}>
+            <span className="levelcard__emoji">{LEVEL_META[d].emoji}</span>
+            <span className="levelcard__label">{LEVEL_META[d].label}</span>
+            <span className="levelcard__desc">{LEVEL_META[d].desc}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function App() {
-  const { view, humanPlay, humanBid, continueTrick, nextRound } = useGame();
+  const { view, begin, humanPlay, humanBid, continueTrick, nextRound } = useGame();
+
+  if (view.phase === "start") {
+    return <StartScreen onChoose={begin} />;
+  }
 
   return (
     <div className="app">
       <header className="topbar">
         <div className="topbar__left">
           <h1>Klaverjassen oefenen</h1>
+          {view.difficulty && (
+            <span className="levelbadge">
+              {LEVEL_META[view.difficulty].emoji} {LEVEL_META[view.difficulty].label}
+            </span>
+          )}
           <CardValuesHint />
         </div>
         <TroefIndicator view={view} />
@@ -37,6 +82,7 @@ export function App() {
 
         <div className="south">
           <SeatLabel seat={HUMAN} view={view} />
+          {view.error && <div className="playerror">⚠️ {view.error.message}</div>}
           <HumanHand view={view} onPlay={humanPlay} />
         </div>
       </div>
@@ -226,20 +272,27 @@ function isContractRed(view: GameView): boolean {
 
 function HumanHand({ view, onPlay }: { view: GameView; onPlay: (c: Card) => void }) {
   const sorted = sortHand(view.humanHand);
-  const canPlay = view.phase === "spelen" && view.currentSeat === HUMAN;
+  const canPlay = view.phase === "spelen" && !view.paused && view.currentSeat === HUMAN;
   const isLegal = (c: Card) => view.legalForHuman.some((l) => cardEquals(l, c));
 
   return (
     <div className="hand">
       {sorted.map((card) => {
-        const playable = canPlay && isLegal(card);
+        // 'makkelijk' (assist): geldige kaarten oplichten, ongeldige dimmen.
+        // Anders: alle kaarten klikbaar, foutmelding volgt bij een ongeldige zet.
+        const legal = isLegal(card);
+        const playable = view.assist && canPlay && legal;
+        const dimmed = view.assist && canPlay && !legal;
+        const clickable = canPlay && (view.assist ? legal : true);
+        const isError = !!view.error && cardEquals(view.error.card, card);
         return (
           <CardView
-            key={`${card.suit}-${card.rank}`}
+            key={`${card.suit}-${card.rank}${isError ? `-err${view.error!.nonce}` : ""}`}
             card={card}
             playable={playable}
-            dimmed={canPlay && !playable}
-            onClick={playable ? () => onPlay(card) : undefined}
+            dimmed={dimmed}
+            error={isError}
+            onClick={clickable ? () => onPlay(card) : undefined}
           />
         );
       })}

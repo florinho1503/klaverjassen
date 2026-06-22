@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Contract } from "./cards";
 import { Play, Seat } from "./trick";
-import { legalMoves } from "./legalMoves";
+import { explainIllegal, legalMoves } from "./legalMoves";
 import { card, cards } from "./testHelpers";
 
 const troef: Contract = { type: "kleur", troef: "klaveren" };
@@ -98,5 +98,37 @@ describe("legalMoves — Amsterdams: niet kunnen bekennen", () => {
     const hand = cards("Bk", "7k", "Ah"); // boer zou kunnen overtroeven, maar hoeft niet
     const trick = [play(0, "9k")]; // seat0 = maat van seat2, wint met troef
     expect(codes(legalMoves(hand, trick, troef, 2))).toEqual(["7k", "Bk"].sort());
+  });
+});
+
+describe("explainIllegal", () => {
+  it("geeft null voor een geldige zet", () => {
+    const hand = cards("Ah", "7h", "7k");
+    const trick = [play(0, "10h")];
+    expect(explainIllegal(card("Ah"), hand, trick, troef, 1)).toBeNull();
+  });
+
+  it("legt uit dat je moet bekennen", () => {
+    const hand = cards("Ah", "7h", "Vs");
+    const trick = [play(0, "10h")];
+    expect(explainIllegal(card("Vs"), hand, trick, troef, 1)).toMatch(/bekennen \(harten\)/);
+  });
+
+  it("legt uit dat je troef moet bijspelen als troef gevraagd is", () => {
+    const hand = cards("7k", "Ah", "Vs");
+    const trick = [play(0, "9k")];
+    expect(explainIllegal(card("Ah"), hand, trick, troef, 1)).toMatch(/troef/);
+  });
+
+  it("legt uit dat je moet introeven als de tegenstander wint", () => {
+    const hand = cards("7k", "Vs", "10r");
+    const trick = [play(0, "Ah")]; // tegenstander wint, geen troef
+    expect(explainIllegal(card("Vs"), hand, trick, troef, 1)).toMatch(/introeven/);
+  });
+
+  it("legt uit dat je moet overtroeven", () => {
+    const hand = cards("Bk", "7k", "Vs");
+    const trick = [play(0, "Ah"), play(1, "9k")]; // seat1 tegenstander van seat2 wint met troef
+    expect(explainIllegal(card("7k"), hand, trick, troef, 2)).toMatch(/overtroeven/);
   });
 });
