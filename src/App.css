@@ -1,0 +1,543 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #0f1713;
+  color: #e8efe9;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* Topbar */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #0b120e;
+  border-bottom: 1px solid #1d2a22;
+}
+.topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.topbar h1 {
+  font-size: 1.05rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Hint (kaartwaardes) */
+.hint {
+  position: relative;
+}
+.hint__toggle {
+  border: 1px solid #2f4a3b;
+  background: #16241c;
+  color: #e8efe9;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.hint__toggle:hover {
+  background: #1e3328;
+}
+.hint__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  gap: 18px;
+  padding: 14px 16px;
+  background: #0b120e;
+  border: 1px solid #2f4a3b;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.hint__table {
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.hint__table caption {
+  font-weight: 700;
+  color: #ffd24a;
+  padding-bottom: 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+.hint__table td {
+  padding: 2px 10px 2px 0;
+}
+.hint__rank {
+  color: #cfe0d5;
+  font-weight: 600;
+}
+.hint__val {
+  color: #fff;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.troef {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+  padding: 3px 16px;
+  background: #16241c;
+  border: 1px solid #2f4a3b;
+  border-radius: 10px;
+}
+.troef__label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9fb3a6;
+}
+.troef__value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+}
+.troef__value.red {
+  color: #ff6b6b;
+}
+.troef--none .troef__value {
+  color: #6f8377;
+  font-weight: 600;
+}
+
+.scoreboard {
+  display: flex;
+  gap: 18px;
+}
+.scoreboard__team {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.75rem;
+  color: #9fb3a6;
+}
+.scoreboard__team strong {
+  font-size: 1.3rem;
+  color: #fff;
+}
+
+/* Table */
+.table {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(70px, auto) 1fr minmax(70px, auto);
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "top top top"
+    "left center right"
+    "south south south";
+  gap: 8px;
+  padding: 16px;
+  background: radial-gradient(ellipse at center, #1f7a4d 0%, #14573a 55%, #0c3b27 100%);
+}
+
+.opponent--top {
+  grid-area: top;
+  justify-self: center;
+}
+.opponent--left {
+  grid-area: left;
+  align-self: center;
+}
+.opponent--right {
+  grid-area: right;
+  align-self: center;
+}
+.center {
+  grid-area: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.south {
+  grid-area: south;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.opponent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.opponent__cards {
+  display: flex;
+}
+.opponent__cards--top {
+  flex-direction: row;
+}
+.opponent__cards--top .card {
+  margin-left: -22px;
+}
+.opponent__cards--top .card:first-child {
+  margin-left: 0;
+}
+.opponent__cards--left,
+.opponent__cards--right {
+  flex-direction: column;
+}
+.opponent__cards--left .card,
+.opponent__cards--right .card {
+  margin-top: -46px;
+}
+.opponent__cards--left .card:first-child,
+.opponent__cards--right .card:first-child {
+  margin-top: 0;
+}
+
+/* Seat labels */
+.seatlabel {
+  font-size: 0.8rem;
+  color: #cfe0d5;
+  padding: 2px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.seatlabel--active {
+  background: #ffd24a;
+  color: #2a1d00;
+  font-weight: 600;
+  box-shadow: 0 0 0 3px rgba(255, 210, 74, 0.3);
+}
+.badge {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #0b120e;
+  color: #9fb3a6;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.badge--maker {
+  background: #2563eb;
+  color: #fff;
+}
+.seatlabel__bid {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #ffd24a;
+  color: #2a1d00;
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+.seatlabel__bid--pass {
+  background: #2a2a2a;
+  color: #b8b8b8;
+}
+
+/* Cards */
+.card {
+  width: 52px;
+  height: 74px;
+  border-radius: 7px;
+  border: 1px solid #c9c9c9;
+  background: #fff;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  padding: 0;
+  cursor: default;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  flex: 0 0 auto;
+}
+.card__rank {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.card__suit {
+  font-size: 1.3rem;
+  line-height: 1.1;
+}
+.card--red {
+  color: #d11e1e;
+}
+.card--black {
+  color: #111;
+}
+.card--back {
+  background: repeating-linear-gradient(45deg, #2b4f8e, #2b4f8e 6px, #24437a 6px, #24437a 12px);
+  border-color: #1b315c;
+}
+.card--playable {
+  cursor: pointer;
+  outline: 3px solid #ffd24a;
+  transition: transform 0.08s ease;
+}
+.card--playable:hover {
+  transform: translateY(-10px);
+}
+.card--dimmed {
+  opacity: 0.45;
+}
+
+/* Hand */
+.hand {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 720px;
+}
+
+/* Trick */
+.trick {
+  position: relative;
+  width: 210px;
+  height: 210px;
+}
+.trick__slot {
+  position: absolute;
+  width: 52px;
+  height: 74px;
+}
+.trick__empty {
+  width: 52px;
+  height: 74px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+}
+.trick--top {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.trick--bottom {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.trick--left {
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.trick--right {
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.trick__slot--winner {
+  outline: 3px solid #ffd24a;
+  border-radius: 8px;
+  box-shadow: 0 0 16px rgba(255, 210, 74, 0.6);
+}
+
+.panel__info .wij {
+  color: #6fe09a;
+  font-weight: 700;
+}
+.panel__info .zij {
+  color: #ff9b6b;
+  font-weight: 700;
+}
+
+.trick__contract {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.trick__contract .red {
+  color: #ff6b6b;
+}
+
+/* Panel */
+.panel {
+  padding: 14px 16px;
+  background: #0b120e;
+  border-top: 1px solid #1d2a22;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+.panel__info {
+  font-size: 0.95rem;
+  text-align: center;
+}
+.panel__tricks {
+  margin-left: 12px;
+  color: #9fb3a6;
+}
+.nat {
+  color: #ff6b6b;
+  font-weight: 700;
+}
+
+.bidlog {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  justify-content: center;
+  max-width: 560px;
+}
+.bidlog__row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #16241c;
+  border: 1px solid #233a2d;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.8rem;
+}
+.bidlog__seat {
+  color: #9fb3a6;
+}
+.bidlog__action {
+  font-weight: 700;
+  color: #ffd24a;
+}
+.bidlog__action--pass {
+  color: #9a9a9a;
+  font-weight: 600;
+}
+
+.playbanner {
+  font-size: 1rem;
+  padding: 6px 14px;
+  background: #16241c;
+  border: 1px solid #2f4a3b;
+  border-radius: 8px;
+}
+.playbanner__team.wij {
+  color: #6fe09a;
+}
+.playbanner__team.zij {
+  color: #ff9b6b;
+}
+
+.bidbuttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Biedpaneel met contractkeuze + stepper */
+.bidcontrols {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.bidcontrols__contracts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.btn--contract {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 56px;
+  padding: 6px 10px;
+  line-height: 1.1;
+}
+.btn--contract small {
+  font-size: 0.6rem;
+  color: #9fb3a6;
+  font-weight: 500;
+}
+.btn--sel {
+  background: #ffd24a;
+  border-color: #ffd24a;
+  color: #2a1d00;
+}
+.btn--sel small {
+  color: #5a4500;
+}
+.bidcontrols__stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.btn--step {
+  width: 44px;
+  height: 44px;
+  font-size: 1.1rem;
+  padding: 0;
+}
+.btn--step:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.bidcontrols__value {
+  font-size: 2rem;
+  font-weight: 800;
+  min-width: 70px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.bidcontrols__actions {
+  display: flex;
+  gap: 10px;
+}
+.btn {
+  border: 1px solid #2f4a3b;
+  background: #16241c;
+  color: #e8efe9;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover {
+  background: #1e3328;
+}
+.btn--pass {
+  background: #3a1f1f;
+  border-color: #5a2f2f;
+}
+.btn--primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  padding: 10px 22px;
+}
+.btn--primary:hover {
+  background: #1d4fd0;
+}
