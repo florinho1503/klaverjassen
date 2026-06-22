@@ -115,36 +115,58 @@ function explainDecision(
 function reviewBid(rec: RoundRecord): BidReview {
   const hand = rec.hands[rec.reviewSeat];
   const worth: Bid | null = evaluateBid(hand);
-  const madeABid = rec.humanBids.some((b) => b.action !== "pas");
+  const worthLabel = worth
+    ? worth.contract.type === "sans"
+      ? `${worth.value} sans`
+      : `${worth.value} ${SUIT_WORD[worth.contract.troef]}`
+    : null;
 
-  if (!worth) {
-    return madeABid
-      ? { verdict: "twijfel", explanation: "Je bood met een vrij zwakke hand — dat is riskant." }
-      : { verdict: "goed", explanation: "Terecht gepast: je hand was geen bod waard." };
-  }
+  // Het laagste bod dat op dat moment nog mogelijk was (rekening houdend met
+  // wat er al geboden was) — niet wat je hand "waard" is.
+  const minToBid = (highest: number | null): number => {
+    if (highest != null) return highest + 10;
+    return worth && worth.contract.type === "sans" ? 70 : 80;
+  };
 
-  const worthLabel =
-    worth.contract.type === "sans" ? `${worth.value} sans` : `${worth.value} ${SUIT_WORD[worth.contract.troef]}`;
+  const madeBids = rec.humanBids.filter((b) => b.action !== "pas");
 
-  if (!madeABid) {
-    // Had de mens kunnen/moeten bieden?
-    const couldHaveBid = rec.humanBids.some((b) => (b.highest ?? 0) < worth.value);
-    return couldHaveBid
-      ? {
-          verdict: "twijfel",
-          explanation: `Je paste, maar je hand was zeker een bod waard (±${worthLabel}).`,
-        }
-      : { verdict: "goed", explanation: "Terecht gepast: het bieden was al te hoog opgelopen." };
-  }
+  if (madeBids.length > 0) {
+    const theirTurn = madeBids.reduce((a, b) =>
+      (b.action as Bid).value > (a.action as Bid).value ? b : a,
+    );
+    const theirValue = (theirTurn.action as Bid).value;
+    const min = minToBid(theirTurn.highest);
 
-  const humanMax = Math.max(...rec.humanBids.filter((b) => b.action !== "pas").map((b) => (b.action as Bid).value));
-  if (humanMax > worth.value) {
+    if (worth && theirValue <= worth.value) {
+      return { verdict: "goed", explanation: `Prima bod (±${worthLabel}).` };
+    }
+    if (worth && worth.value >= min) {
+      // Lager bieden was mogelijk én genoeg geweest.
+      return {
+        verdict: "twijfel",
+        explanation: `Je bood ${theirValue}, maar het minimum (${min}) was met deze hand (±${worthLabel}) al genoeg.`,
+      };
+    }
+    // Om mee te doen moest je boven je hand bieden — gedurfd.
+    const w = worth ? `±${worthLabel}` : "eigenlijk geen bod";
     return {
       verdict: "twijfel",
-      explanation: `Wat hoog geboden (${humanMax}) voor deze hand; ±${worthLabel} paste beter.`,
+      explanation: `Gedurfd bod: je hand was ${w} waard en er lag al ${theirTurn.highest ?? 0}, dus je moest minstens ${min}. Passen kon ook.`,
     };
   }
-  return { verdict: "goed", explanation: `Prima bod voor deze hand (±${worthLabel}).` };
+
+  // Alleen gepast.
+  if (!worth) {
+    return { verdict: "goed", explanation: "Terecht gepast: je hand was geen bod waard." };
+  }
+  const firstMin = minToBid(rec.humanBids[0]?.highest ?? null);
+  if (worth.value >= firstMin) {
+    return {
+      verdict: "twijfel",
+      explanation: `Je paste, maar je hand (±${worthLabel}) was nog een bod waard (minimaal ${firstMin}).`,
+    };
+  }
+  return { verdict: "goed", explanation: "Terecht gepast: het bieden liep te hoog op voor je hand." };
 }
 
 export function reviewRound(
