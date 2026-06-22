@@ -370,6 +370,95 @@ body {
   transform: translateY(-4px);
   border-color: #ffd24a;
 }
+.levelcard--sel {
+  border-color: #ffd24a;
+  background: #1b2c22;
+  box-shadow: 0 0 0 2px rgba(255, 210, 74, 0.4);
+}
+
+.startscreen__format {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.formatrow {
+  display: flex;
+  gap: 8px;
+}
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.stepper__value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  min-width: 120px;
+  text-align: center;
+}
+.stepper__value small {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #9fb3a6;
+}
+.startscreen__go {
+  margin-top: 18px;
+  font-size: 1.05rem;
+  padding: 12px 28px;
+}
+
+.panel__progress {
+  margin-top: 6px;
+  color: #9fb3a6;
+  font-size: 0.82rem;
+}
+
+.gameover__title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.telstaat {
+  max-height: 168px;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 420px;
+}
+.telstaat table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.telstaat th,
+.telstaat td {
+  padding: 3px 8px;
+  text-align: left;
+}
+.telstaat th {
+  color: #9fb3a6;
+  font-weight: 600;
+  border-bottom: 1px solid #233a2d;
+  position: sticky;
+  top: 0;
+  background: #0b120e;
+}
+.telstaat td:nth-child(3),
+.telstaat td:nth-child(4),
+.telstaat th:nth-child(3),
+.telstaat th:nth-child(4) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.telstaat tfoot td {
+  border-top: 1px solid #233a2d;
+  font-weight: 700;
+}
+.telstaat__nat {
+  color: #ff9b6b;
+}
 .levelcard__emoji {
   font-size: 1.8rem;
 }

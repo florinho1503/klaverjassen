@@ -15,6 +15,7 @@ import {
   RoundResult,
   SUITS,
   Seat,
+  Team,
   biddingBot,
   cardBotFor,
   cardEquals,
@@ -36,6 +37,23 @@ export interface PlayError {
   message: string;
   card: Card;
   nonce: number;
+}
+
+/** Vorm van een potje: een vast aantal rondes, of tot een puntenaantal. */
+export type GameTarget =
+  | { type: "rondes"; rounds: number }
+  | { type: "punten"; points: number };
+
+/** Eén regel op de telstaat. */
+export interface TelstaatRow {
+  round: number;
+  makerTeam: Team;
+  bid: number;
+  contract: Contract;
+  points: [number, number];
+  paper: [number, number];
+  nat: boolean;
+  pitTeam: Team | null;
 }
 
 export interface BidOption {
@@ -82,15 +100,24 @@ export interface GameView {
   message: string | null;
   /** Cumulatieve score op papier over alle handen. */
   totalScore: [number, number];
+  /** De gekozen potjevorm. */
+  target: GameTarget | null;
+  /** Telstaat: alle gespeelde rondes. */
+  telstaat: TelstaatRow[];
+  /** Is het potje afgelopen (doel bereikt)? */
+  gameOver: boolean;
+  /** Winnend team na afloop, of null bij gelijkspel / nog bezig. */
+  winner: Team | null;
 }
 
 export interface GameApi {
   view: GameView;
-  begin: (difficulty: Difficulty) => void;
+  begin: (difficulty: Difficulty, target: GameTarget) => void;
   humanPlay: (card: Card) => void;
   humanBid: (action: BidAction) => void;
   continueTrick: () => void;
   nextRound: () => void;
+  newGame: () => void;
 }
 
 export function useGame(): GameApi {
@@ -103,6 +130,8 @@ export function useGame(): GameApi {
   const messageRef = useRef<string | null>(null);
   const resultRef = useRef<RoundResult | null>(null);
   const totalRef = useRef<[number, number]>([0, 0]);
+  const targetRef = useRef<GameTarget | null>(null);
+  const historyRef = useRef<TelstaatRow[]>([]);
   const pausedRef = useRef(false);
   const errorRef = useRef<PlayError | null>(null);
   const errorNonceRef = useRef(0);
@@ -169,6 +198,22 @@ export function useGame(): GameApi {
       round && round.tricks.length > 0 ? round.tricks[round.tricks.length - 1] : null;
     const showCompleted = (paused || phase === "klaar") && lastCompleted !== null;
 
+    // Potje afgelopen?
+    const target = targetRef.current;
+    const total = totalRef.current;
+    let gameOver = false;
+    if (phase === "klaar" && resultRef.current && target) {
+      gameOver =
+        target.type === "rondes"
+          ? historyRef.current.length >= target.rounds
+          : Math.max(total[0], total[1]) >= target.points;
+    }
+    const winner: Team | null = gameOver
+      ? total[0] === total[1]
+        ? null
+        : ((total[0] > total[1] ? 0 : 1) as Team)
+      : null;
+
     return {
       phase,
       difficulty,
@@ -195,6 +240,10 @@ export function useGame(): GameApi {
       result: resultRef.current,
       message: messageRef.current,
       totalScore: totalRef.current,
+      target: targetRef.current,
+      telstaat: historyRef.current,
+      gameOver,
+      winner,
     };
   }, []);
 
@@ -222,6 +271,19 @@ export function useGame(): GameApi {
     totalRef.current = [
       totalRef.current[0] + result.paper[0],
       totalRef.current[1] + result.paper[1],
+    ];
+    historyRef.current = [
+      ...historyRef.current,
+      {
+        round: historyRef.current.length + 1,
+        makerTeam: result.makerTeam,
+        bid: round.bid,
+        contract: round.contract,
+        points: result.points,
+        paper: result.paper,
+        nat: result.nat,
+        pitTeam: result.pitTeam,
+      },
     ];
     phaseRef.current = "klaar";
     sync();
@@ -271,14 +333,29 @@ export function useGame(): GameApi {
   );
 
   const begin = useCallback(
-    (difficulty: Difficulty) => {
+    (difficulty: Difficulty, target: GameTarget) => {
       difficultyRef.current = difficulty;
+      targetRef.current = target;
       totalRef.current = [0, 0];
+      historyRef.current = [];
       dealerRef.current = 3;
       startHand(dealerRef.current);
     },
     [startHand],
   );
+
+  const newGame = useCallback(() => {
+    phaseRef.current = "start";
+    difficultyRef.current = null;
+    targetRef.current = null;
+    historyRef.current = [];
+    totalRef.current = [0, 0];
+    roundRef.current = null;
+    auctionRef.current = null;
+    resultRef.current = null;
+    messageRef.current = null;
+    sync();
+  }, [sync]);
 
   // Bots laten handelen wanneer zij aan de beurt zijn.
   useEffect(() => {
@@ -368,5 +445,5 @@ export function useGame(): GameApi {
     [],
   );
 
-  return { view: buildView(), begin, humanPlay, humanBid, continueTrick, nextRound };
+  return { view: buildView(), begin, humanPlay, humanBid, continueTrick, nextRound, newGame };
 }

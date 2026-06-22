@@ -18,9 +18,10 @@ describe("App — render smoketest", () => {
     expect(getByText("Moeilijk")).toBeTruthy();
   });
 
-  it("na niveaukeuze wordt gedeeld: 8 kaarten voor de mens, biedfase", () => {
+  it("na niveau + start wordt gedeeld: 8 kaarten voor de mens, biedfase", () => {
     const { container, getByText } = render(<App />);
-    fireEvent.click(getByText("Makkelijk"));
+    fireEvent.click(getByText("Makkelijk")); // niveau kiezen
+    fireEvent.click(getByText("Start het potje")); // potje starten (standaard 16 rondes)
     expect(container.querySelectorAll(".hand .card")).toHaveLength(8);
     expect(container.textContent).toContain("Bieden");
     // 3 tegenstanders × 8 kaartruggen

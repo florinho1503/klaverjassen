@@ -9,7 +9,7 @@ import {
   contractShort,
   isRed,
 } from "./ui/display";
-import { BidOption, GameView, HUMAN, useGame } from "./ui/useGame";
+import { BidOption, GameTarget, GameView, HUMAN, TelstaatRow, useGame } from "./ui/useGame";
 import "./App.css";
 
 const LEVEL_META: Record<Difficulty, { emoji: string; label: string; desc: string }> = {
@@ -30,29 +30,122 @@ const LEVEL_META: Record<Difficulty, { emoji: string; label: string; desc: strin
   },
 };
 
-function StartScreen({ onChoose }: { onChoose: (d: Difficulty) => void }) {
+function Stepper({
+  label,
+  value,
+  set,
+  min,
+  max,
+  step,
+}: {
+  label: string;
+  value: number;
+  set: (n: number) => void;
+  min: number;
+  max: number;
+  step: number;
+}) {
+  return (
+    <div className="stepper">
+      <button
+        type="button"
+        className="btn btn--step"
+        onClick={() => set(Math.max(min, value - step))}
+        disabled={value <= min}
+      >
+        −
+      </button>
+      <span className="stepper__value">
+        {value} <small>{label}</small>
+      </span>
+      <button
+        type="button"
+        className="btn btn--step"
+        onClick={() => set(Math.min(max, value + step))}
+        disabled={value >= max}
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
+function StartScreen({ onStart }: { onStart: (d: Difficulty, t: GameTarget) => void }) {
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const [format, setFormat] = useState<"rondes" | "punten">("rondes");
+  const [rounds, setRounds] = useState(16);
+  const [points, setPoints] = useState(100);
+
+  const start = () => {
+    if (!difficulty) return;
+    onStart(
+      difficulty,
+      format === "rondes" ? { type: "rondes", rounds } : { type: "punten", points },
+    );
+  };
+
   return (
     <div className="startscreen">
       <h1>Klaverjassen oefenen</h1>
-      <p className="startscreen__sub">Kies je niveau</p>
+
+      <p className="startscreen__sub">1. Kies je niveau</p>
       <div className="startscreen__levels">
         {(Object.keys(LEVEL_META) as Difficulty[]).map((d) => (
-          <button key={d} type="button" className="levelcard" onClick={() => onChoose(d)}>
+          <button
+            key={d}
+            type="button"
+            className={`levelcard ${difficulty === d ? "levelcard--sel" : ""}`}
+            onClick={() => setDifficulty(d)}
+          >
             <span className="levelcard__emoji">{LEVEL_META[d].emoji}</span>
             <span className="levelcard__label">{LEVEL_META[d].label}</span>
             <span className="levelcard__desc">{LEVEL_META[d].desc}</span>
           </button>
         ))}
       </div>
+
+      <p className="startscreen__sub">2. Hoe lang speel je?</p>
+      <div className="startscreen__format">
+        <div className="formatrow">
+          <button
+            type="button"
+            className={`btn ${format === "rondes" ? "btn--sel" : ""}`}
+            onClick={() => setFormat("rondes")}
+          >
+            Aantal rondes
+          </button>
+          <button
+            type="button"
+            className={`btn ${format === "punten" ? "btn--sel" : ""}`}
+            onClick={() => setFormat("punten")}
+          >
+            Tot punten
+          </button>
+        </div>
+        {format === "rondes" ? (
+          <Stepper label="rondes" value={rounds} set={setRounds} min={4} max={32} step={4} />
+        ) : (
+          <Stepper label="punten" value={points} set={setPoints} min={50} max={300} step={10} />
+        )}
+      </div>
+
+      <button
+        type="button"
+        className="btn btn--primary startscreen__go"
+        disabled={!difficulty}
+        onClick={start}
+      >
+        {difficulty ? "Start het potje" : "Kies eerst een niveau"}
+      </button>
     </div>
   );
 }
 
 export function App() {
-  const { view, begin, humanPlay, humanBid, continueTrick, nextRound } = useGame();
+  const { view, begin, humanPlay, humanBid, continueTrick, nextRound, newGame } = useGame();
 
   if (view.phase === "start") {
-    return <StartScreen onChoose={begin} />;
+    return <StartScreen onStart={begin} />;
   }
 
   return (
@@ -65,7 +158,7 @@ export function App() {
               {LEVEL_META[view.difficulty].emoji} {LEVEL_META[view.difficulty].label}
             </span>
           )}
-          <CardValuesHint />
+          {view.assist && <CardValuesHint />}
         </div>
         <TroefIndicator view={view} />
         <ScoreBoard view={view} />
@@ -87,7 +180,13 @@ export function App() {
         </div>
       </div>
 
-      <Panel view={view} onBid={humanBid} onNext={nextRound} onContinue={continueTrick} />
+      <Panel
+        view={view}
+        onBid={humanBid}
+        onNext={nextRound}
+        onContinue={continueTrick}
+        onNewGame={newGame}
+      />
     </div>
   );
 }
@@ -438,19 +537,28 @@ function Panel({
   onBid,
   onNext,
   onContinue,
+  onNewGame,
 }: {
   view: GameView;
   onBid: (a: BidAction) => void;
   onNext: () => void;
   onContinue: () => void;
+  onNewGame: () => void;
 }) {
   if (view.phase === "klaar") {
     return (
       <div className="panel">
-        <RoundSummary view={view} />
-        <button className="btn btn--primary" onClick={onNext}>
-          Volgende ronde
-        </button>
+        {view.gameOver ? <GameOver view={view} /> : <RoundSummary view={view} />}
+        <Telstaat rows={view.telstaat} totals={view.totalScore} />
+        {view.gameOver ? (
+          <button className="btn btn--primary" onClick={onNewGame}>
+            Nieuw potje
+          </button>
+        ) : (
+          <button className="btn btn--primary" onClick={onNext}>
+            Volgende ronde
+          </button>
+        )}
       </div>
     );
   }
@@ -539,6 +647,67 @@ function RoundSummary({ view }: { view: GameView }) {
       )}{" "}
       Punten — Wij: {r.points[0]} (op papier {r.paper[0]}) · Zij: {r.points[1]} (op papier {r.paper[1]}).
       {r.pitTeam !== null && <strong> Pit voor {r.pitTeam === 0 ? "ons" : "hen"}! (+100)</strong>}
+      <div className="panel__progress">{progressLabel(view)}</div>
+    </div>
+  );
+}
+
+function progressLabel(view: GameView): string {
+  const t = view.target;
+  if (!t) return "";
+  if (t.type === "rondes") return `Ronde ${view.telstaat.length} van ${t.rounds}`;
+  return `Eerste team tot ${t.points} punten wint`;
+}
+
+function GameOver({ view }: { view: GameView }) {
+  const w = view.winner;
+  return (
+    <div className="panel__info gameover">
+      <div className="gameover__title">
+        {w === null ? "🤝 Gelijkspel!" : w === 0 ? "🎉 Jullie winnen het potje!" : "De tegenpartij wint het potje."}
+      </div>
+      Eindstand op papier — Wij: <strong>{view.totalScore[0]}</strong> · Zij:{" "}
+      <strong>{view.totalScore[1]}</strong> (na {view.telstaat.length} rondes).
+    </div>
+  );
+}
+
+function Telstaat({ rows, totals }: { rows: TelstaatRow[]; totals: [number, number] }) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="telstaat">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Bod</th>
+            <th>Wij</th>
+            <th>Zij</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.round} className={r.nat ? "telstaat__nat" : ""}>
+              <td>{r.round}</td>
+              <td>
+                {r.makerTeam === 0 ? "Wij" : "Zij"} {r.bid} {contractSymbol(r.contract)}
+                {r.nat ? " · nat" : ""}
+                {r.pitTeam !== null ? " · pit" : ""}
+              </td>
+              <td>{r.paper[0]}</td>
+              <td>{r.paper[1]}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td />
+            <td>Totaal</td>
+            <td>{totals[0]}</td>
+            <td>{totals[1]}</td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   );
 }
