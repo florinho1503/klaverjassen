@@ -8,4 +8,5 @@ export * from "./round";
 export * from "./bot";
 export * from "./analyze";
 export * from "./mediumBot";
+export * from "./montecarlo";
 export * from "./bidding";

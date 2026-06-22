@@ -9,6 +9,7 @@
 import { Card, cardPoints, isTrump, trickStrength } from "./cards";
 import { Rng } from "./deal";
 import { mediumBot } from "./mediumBot";
+import { hardBot } from "./montecarlo";
 import { Round } from "./round";
 import { partnerOf, trickWinnerSeat } from "./trick";
 
@@ -27,7 +28,7 @@ export function cardBotFor(difficulty: Difficulty): Bot {
     case "middel":
       return mediumBot;
     case "moeilijk":
-      return mediumBot; // TODO fase 3: hardBot (heuristiek + Monte-Carlo)
+      return hardBot;
   }
 }
 
