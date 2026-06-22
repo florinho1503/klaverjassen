@@ -2,6 +2,12 @@
   box-sizing: border-box;
 }
 
+:root {
+  --card-w: 52px;
+  --card-h: 74px;
+  --trick-size: 210px;
+}
+
 html,
 body,
 #root {
@@ -13,6 +19,7 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   background: #0f1713;
   color: #e8efe9;
+  overflow-x: hidden;
 }
 
 .app {
@@ -193,7 +200,7 @@ body {
   flex-direction: row;
 }
 .opponent__cards--top .card {
-  margin-left: -22px;
+  margin-left: calc(var(--card-w) * -0.42);
 }
 .opponent__cards--top .card:first-child {
   margin-left: 0;
@@ -204,7 +211,7 @@ body {
 }
 .opponent__cards--left .card,
 .opponent__cards--right .card {
-  margin-top: -46px;
+  margin-top: calc(var(--card-h) * -0.62);
 }
 .opponent__cards--left .card:first-child,
 .opponent__cards--right .card:first-child {
@@ -255,8 +262,8 @@ body {
 
 /* Cards */
 .card {
-  width: 52px;
-  height: 74px;
+  width: var(--card-w);
+  height: var(--card-h);
   border-radius: 7px;
   border: 1px solid #c9c9c9;
   background: #fff;
@@ -491,6 +498,86 @@ body {
   border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 600;
+  text-align: center;
+}
+
+/* ---------- Mobiel ---------- */
+@media (max-width: 640px) {
+  :root {
+    --card-w: 42px;
+    --card-h: 60px;
+    --trick-size: 156px;
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 10px;
+    padding: 8px 10px;
+  }
+  .topbar h1 {
+    font-size: 0.95rem;
+  }
+  .topbar__left {
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .scoreboard {
+    gap: 12px;
+  }
+  .scoreboard__team strong {
+    font-size: 1.1rem;
+  }
+
+  .table {
+    grid-template-columns: minmax(48px, auto) 1fr minmax(48px, auto);
+    gap: 4px;
+    padding: 8px;
+  }
+
+  .card__rank {
+    font-size: 0.95rem;
+  }
+  .card__suit {
+    font-size: 1.05rem;
+  }
+  .hand {
+    gap: 4px;
+  }
+
+  .panel {
+    padding: 10px 12px;
+  }
+  .bidcontrols__value {
+    font-size: 1.6rem;
+  }
+  .telstaat {
+    max-height: 140px;
+  }
+
+  /* Spiekbriefje (alleen makkelijk) niet buiten beeld laten vallen */
+  .hint__panel {
+    left: auto;
+    right: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  :root {
+    --card-w: 34px;
+    --card-h: 49px;
+    --trick-size: 132px;
+  }
+  .hand {
+    gap: 3px;
+  }
+  .card__rank {
+    font-size: 0.82rem;
+  }
+  .card__suit {
+    font-size: 0.92rem;
+  }
 }
 
 /* Hand */
@@ -505,17 +592,17 @@ body {
 /* Trick */
 .trick {
   position: relative;
-  width: 210px;
-  height: 210px;
+  width: var(--trick-size);
+  height: var(--trick-size);
 }
 .trick__slot {
   position: absolute;
-  width: 52px;
-  height: 74px;
+  width: var(--card-w);
+  height: var(--card-h);
 }
 .trick__empty {
-  width: 52px;
-  height: 74px;
+  width: var(--card-w);
+  height: var(--card-h);
   border: 1px dashed rgba(255, 255, 255, 0.18);
   border-radius: 7px;
 }
