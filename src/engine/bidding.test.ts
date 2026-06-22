@@ -33,17 +33,37 @@ describe("Auction — verloop", () => {
     expect(r.bid.value).toBe(80);
   });
 
-  it("hoger bieden: hoogste bod wint", () => {
+  it("hoger bieden: hoogste bod wint, stopt na 3 passen op rij", () => {
     const a = new Auction({ firstBidder: 0 });
     a.bid(bidKlaveren(80)); // 0
     a.bid(bidKlaveren(90)); // 1
     a.bid("pas"); // 2
-    a.bid(bidKlaveren(100)); // 3
-    a.bid("pas"); // terug bij 0 (seat 1 paste niet... 1 is nog actief)
-    a.bid("pas"); // 1 past
+    a.bid(bidKlaveren(100)); // 3 → reset passen
+    a.bid("pas"); // 0
+    a.bid("pas"); // 1
+    a.bid("pas"); // 2 → 3 passen op rij na het laatste bod
     expect(a.isComplete).toBe(true);
     expect(a.result()!.makerSeat).toBe(3);
     expect(a.result()!.bid.value).toBe(100);
+  });
+
+  it("wie paste mag er later tóch weer overheen bieden", () => {
+    const a = new Auction({ firstBidder: 0 });
+    a.bid("pas"); // 0 past
+    a.bid(bidKlaveren(80)); // 1 biedt
+    a.bid("pas"); // 2
+    a.bid("pas"); // 3
+    // terug bij seat 0, die eerder paste — moet nu tóch mogen bieden
+    expect(a.currentSeat).toBe(0);
+    expect(a.isComplete).toBe(false);
+    a.bid(bidKlaveren(90)); // 0 biedt alsnog over de 80 heen
+    expect(a.currentHighest!.seat).toBe(0);
+    a.bid("pas"); // 1
+    a.bid("pas"); // 2
+    a.bid("pas"); // 3 → 3 passen op rij
+    expect(a.isComplete).toBe(true);
+    expect(a.result()!.makerSeat).toBe(0);
+    expect(a.result()!.bid.value).toBe(90);
   });
 
   it("iedereen past → geen maker", () => {

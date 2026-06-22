@@ -36,7 +36,7 @@ export interface AuctionLogEntry {
 
 export class Auction {
   private turn: Seat;
-  private readonly active = new Set<Seat>([0, 1, 2, 3]);
+  private consecutivePasses = 0;
   private highest: { seat: Seat; bid: Bid } | null = null;
   private readonly minKleur: number;
   private readonly minSans: number;
@@ -59,8 +59,10 @@ export class Auction {
   }
 
   get isComplete(): boolean {
-    if (this.active.size === 0) return true; // iedereen paste
-    return this.highest !== null && this.active.size === 1; // alleen hoogste bieder over
+    // Passen haalt je er niet uit; je mag er later weer overheen. Het bieden
+    // stopt pas als iedereen achter elkaar past.
+    if (this.highest === null) return this.consecutivePasses >= 4; // niemand bood
+    return this.consecutivePasses >= 3; // de 3 anderen pasten na het laatste bod
   }
 
   /** Laagste toegestane bod voor een contract op dit moment. */
@@ -81,20 +83,14 @@ export class Auction {
     if (this.isComplete) throw new Error("Het bieden is afgelopen");
     const seat = this.turn;
     if (action === "pas") {
-      this.active.delete(seat);
+      this.consecutivePasses += 1;
     } else {
       if (!this.isLegal(action)) throw new Error("Ongeldig bod");
       this.highest = { seat, bid: action };
+      this.consecutivePasses = 0; // een nieuw bod opent het bieden weer
     }
     this.log.push({ seat, action });
-    this.advance();
-  }
-
-  private advance(): void {
-    if (this.isComplete) return;
-    let s = nextSeat(this.turn);
-    while (!this.active.has(s)) s = nextSeat(s);
-    this.turn = s;
+    if (!this.isComplete) this.turn = nextSeat(this.turn);
   }
 
   /** Uitkomst van het bieden, of null als iedereen paste. */
