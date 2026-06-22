@@ -14,6 +14,8 @@ export type Verdict = "goed" | "twijfel" | "fout";
 export interface DecisionReview {
   trickNumber: number;
   trickSoFar: Play[];
+  /** Jouw hand op het moment van deze beslissing. */
+  handAtDecision: Card[];
   playedCard: Card;
   bestCard: Card;
   /** Gemiddeld puntenverschil tussen de beste zet en jouw zet. */
@@ -164,6 +166,7 @@ export function reviewRound(
       const legal = round.legalMoves();
       if (legal.length > 1) {
         const trickSoFar = [...round.currentTrick];
+        const handAtDecision = [...round.handOf(rec.reviewSeat)];
         const values = evaluateMoves(round, {
           determinizations: options.determinizations ?? 80,
           rng: options.rng,
@@ -175,6 +178,7 @@ export function reviewRound(
         decisions.push({
           trickNumber: round.tricks.length + 1,
           trickSoFar,
+          handAtDecision,
           playedCard: play.card,
           bestCard: best.card,
           gap,

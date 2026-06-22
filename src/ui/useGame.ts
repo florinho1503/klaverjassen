@@ -114,8 +114,10 @@ export interface GameView {
   winner: Team | null;
   /** Kan de afgelopen ronde door de coach worden nagekeken? */
   canReview: boolean;
-  /** Het review-resultaat van de coach, of null. */
+  /** Het review-resultaat van de coach, of null (nog aan het berekenen). */
   review: RoundReview | null;
+  /** Staat de coach-overlay open? */
+  reviewOpen: boolean;
 }
 
 export interface GameApi {
@@ -148,6 +150,7 @@ export function useGame(): GameApi {
   const recordRef = useRef<RoundRecord | null>(null);
   const humanBidsRef = useRef<HumanBidTurn[]>([]);
   const reviewRef = useRef<RoundReview | null>(null);
+  const reviewOpenRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -259,6 +262,7 @@ export function useGame(): GameApi {
       winner,
       canReview: phase === "klaar" && recordRef.current !== null,
       review: reviewRef.current,
+      reviewOpen: reviewOpenRef.current,
     };
   }, []);
 
@@ -275,6 +279,7 @@ export function useGame(): GameApi {
       errorRef.current = null;
       recordRef.current = null;
       reviewRef.current = null;
+      reviewOpenRef.current = false;
       humanBidsRef.current = [];
       phaseRef.current = "bieden";
       sync();
@@ -390,14 +395,26 @@ export function useGame(): GameApi {
 
   const requestReview = useCallback(() => {
     if (!recordRef.current) return;
-    reviewRef.current = reviewRound(recordRef.current, { determinizations: 80, rng: Math.random });
+    if (!reviewRef.current) {
+      reviewRef.current = reviewRound(recordRef.current, { determinizations: 80, rng: Math.random });
+    }
+    reviewOpenRef.current = true;
     sync();
   }, [sync]);
 
   const closeReview = useCallback(() => {
-    reviewRef.current = null;
+    reviewOpenRef.current = false;
     sync();
   }, [sync]);
+
+  // Bereken de review automatisch zodra de ronde klaar is (zodat het aantal
+  // fouten meteen op de knop staat). Draait na de paint, dus de eindstand is al zichtbaar.
+  useEffect(() => {
+    if (phaseRef.current === "klaar" && recordRef.current && !reviewRef.current) {
+      reviewRef.current = reviewRound(recordRef.current, { determinizations: 60, rng: Math.random });
+      sync();
+    }
+  });
 
   // Bots laten handelen wanneer zij aan de beurt zijn.
   useEffect(() => {

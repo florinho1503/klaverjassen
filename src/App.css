@@ -604,6 +604,92 @@ body {
   border-left-color: #ff5252;
 }
 
+/* Stapper-navigatie */
+.stepper-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 14px 0 10px;
+}
+.stepper-nav__label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #16241c;
+  border-left: 4px solid #6f8377;
+}
+
+/* Gereconstrueerde situatie */
+.situation__label {
+  font-size: 0.78rem;
+  color: #9fb3a6;
+  margin: 10px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.situation__trick {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.situation__play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.situation__seat {
+  font-size: 0.7rem;
+  color: #cfe0d5;
+}
+.situation__lead {
+  color: #9fb3a6;
+  font-size: 0.9rem;
+}
+.situation__hand {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.situation__legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 0.75rem;
+}
+.legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.legend::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.legend--chosen::before {
+  background: #ff5252;
+}
+.legend--best::before {
+  background: #3fbf6f;
+}
+.situation__explanation {
+  margin: 14px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  background: #16241c;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.card--best {
+  outline: 3px solid #3fbf6f;
+  box-shadow: 0 0 14px rgba(63, 191, 111, 0.6);
+}
+
 /* ---------- Mobiel ---------- */
 @media (max-width: 640px) {
   :root {

@@ -160,7 +160,9 @@ export function App() {
 
   return (
     <div className="app">
-      {view.review && <ReviewOverlay review={view.review} onClose={closeReview} />}
+      {view.reviewOpen && view.review && (
+        <ReviewOverlay review={view.review} onClose={closeReview} />
+      )}
       <header className="topbar">
         <div className="topbar__left">
           <h1>Klaverjassen oefenen</h1>
@@ -567,7 +569,9 @@ function Panel({
         <div className="panel__actions">
           {view.canReview && (
             <button className="btn" onClick={onReview}>
-              🎓 Bekijk je ronde
+              {view.review
+                ? `🎓 Leer van je fouten (${view.review.mistakes + view.review.doubtful})`
+                : "🎓 Coach analyseert…"}
             </button>
           )}
           {view.gameOver ? (
@@ -733,67 +737,104 @@ function Telstaat({ rows, totals }: { rows: TelstaatRow[]; totals: [number, numb
   );
 }
 
-const VERDICT_META: Record<Verdict, { icon: string; cls: string }> = {
-  goed: { icon: "✅", cls: "verdict--goed" },
-  twijfel: { icon: "⚠️", cls: "verdict--twijfel" },
-  fout: { icon: "❌", cls: "verdict--fout" },
+const VERDICT_META: Record<Verdict, { icon: string; cls: string; label: string }> = {
+  goed: { icon: "✅", cls: "verdict--goed", label: "Goed" },
+  twijfel: { icon: "⚠️", cls: "verdict--twijfel", label: "Twijfelachtig" },
+  fout: { icon: "❌", cls: "verdict--fout", label: "Fout" },
 };
 
-function MiniTrick({ plays, played }: { plays: { seat: Seat; card: Card }[]; played: Card }) {
+// De situatie van één beslissing reconstrueren: wat er al lag, jouw hand toen.
+function SituationView({ d }: { d: DecisionReview }) {
   return (
-    <div className="minitrick">
-      {plays.map((p, i) => (
-        <CardView key={i} card={p.card} />
-      ))}
-      <span className="minitrick__arrow">→</span>
-      <CardView card={played} />
-    </div>
-  );
-}
-
-function DecisionRow({ d }: { d: DecisionReview }) {
-  const m = VERDICT_META[d.verdict];
-  return (
-    <div className={`decision ${m.cls}`}>
-      <div className="decision__head">
-        <span>{m.icon}</span>
-        <span>Slag {d.trickNumber}</span>
+    <div className="situation">
+      <div className="situation__label">Slag {d.trickNumber} · op tafel:</div>
+      <div className="situation__trick">
+        {d.trickSoFar.length === 0 ? (
+          <span className="situation__lead">Jij kwam uit (niemand had nog gespeeld).</span>
+        ) : (
+          d.trickSoFar.map((p, i) => (
+            <span key={i} className="situation__play">
+              <span className="situation__seat">{SEAT_NAME[p.seat]}</span>
+              <CardView card={p.card} />
+            </span>
+          ))
+        )}
       </div>
-      <MiniTrick plays={d.trickSoFar} played={d.playedCard} />
-      {d.verdict !== "goed" && (
-        <div className="decision__better">
-          Beter was: <CardView card={d.bestCard} />
-        </div>
-      )}
-      <p className="decision__text">{d.explanation}</p>
+
+      <div className="situation__label">Jouw kaarten toen:</div>
+      <div className="situation__hand">
+        {sortHand(d.handAtDecision).map((c) => (
+          <CardView
+            key={`${c.suit}-${c.rank}`}
+            card={c}
+            best={cardEquals(c, d.bestCard)}
+            error={cardEquals(c, d.playedCard) && !cardEquals(c, d.bestCard)}
+          />
+        ))}
+      </div>
+      <div className="situation__legend">
+        <span className="legend legend--chosen">jij speelde</span>
+        <span className="legend legend--best">beter geweest</span>
+      </div>
+
+      <p className="situation__explanation">{d.explanation}</p>
     </div>
   );
 }
 
 function ReviewOverlay({ review, onClose }: { review: RoundReview; onClose: () => void }) {
+  const flagged = review.decisions.filter((d) => d.verdict !== "goed");
+  const [idx, setIdx] = useState(0);
   const bm = VERDICT_META[review.bid.verdict];
+  const cur = Math.min(idx, Math.max(0, flagged.length - 1));
+  const d = flagged[cur];
+
   return (
     <div className="overlay" onClick={onClose}>
       <div className="reviewcard" onClick={(e) => e.stopPropagation()}>
         <div className="reviewcard__head">
-          <h2>🎓 Coach — jouw ronde</h2>
+          <h2>🎓 Leer van je fouten</h2>
           <button type="button" className="btn" onClick={onClose}>
             Sluiten
           </button>
         </div>
+
         <div className="reviewsummary">
           ✅ {review.good} goed · ⚠️ {review.doubtful} twijfel · ❌ {review.mistakes} fout
         </div>
         <div className={`bidreview ${bm.cls}`}>
           <strong>{bm.icon} Bod:</strong> {review.bid.explanation}
         </div>
-        <div className="decisions">
-          {review.decisions.length === 0 ? (
-            <p className="decision__text">Geen beslissingen om na te kijken in deze ronde.</p>
-          ) : (
-            review.decisions.map((d, i) => <DecisionRow key={i} d={d} />)
-          )}
-        </div>
+
+        {flagged.length === 0 ? (
+          <p className="situation__explanation">Geen speelfouten deze ronde — netjes gespeeld! 🎉</p>
+        ) : (
+          <>
+            <div className="stepper-nav">
+              <button
+                type="button"
+                className="btn btn--step"
+                onClick={() => setIdx((i) => Math.max(0, i - 1))}
+                disabled={cur === 0}
+              >
+                ←
+              </button>
+              <span className={`stepper-nav__label ${VERDICT_META[d.verdict].cls}`}>
+                {VERDICT_META[d.verdict].icon} {VERDICT_META[d.verdict].label} · {cur + 1} van{" "}
+                {flagged.length}
+              </span>
+              <button
+                type="button"
+                className="btn btn--step"
+                onClick={() => setIdx((i) => Math.min(flagged.length - 1, i + 1))}
+                disabled={cur === flagged.length - 1}
+              >
+                →
+              </button>
+            </div>
+            <SituationView d={d} />
+          </>
+        )}
       </div>
     </div>
   );

@@ -43,6 +43,7 @@ describe("reviewRound", () => {
       expect(d.gap).toBeGreaterThanOrEqual(-0.001);
       expect(["goed", "twijfel", "fout"]).toContain(d.verdict);
       expect(d.explanation.length).toBeGreaterThan(0);
+      expect(d.handAtDecision.length).toBeGreaterThan(0);
     }
     expect(["goed", "twijfel", "fout"]).toContain(review.bid.verdict);
   });

@@ -7,15 +7,17 @@ interface Props {
   playable?: boolean;
   dimmed?: boolean;
   error?: boolean;
+  best?: boolean;
 }
 
-export function CardView({ card, onClick, playable, dimmed, error }: Props) {
+export function CardView({ card, onClick, playable, dimmed, error, best }: Props) {
   const cls = [
     "card",
     isRed(card.suit) ? "card--red" : "card--black",
     playable ? "card--playable" : "",
     dimmed ? "card--dimmed" : "",
     error ? "card--error" : "",
+    best ? "card--best" : "",
   ]
     .filter(Boolean)
     .join(" ");
