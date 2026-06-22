@@ -3,7 +3,7 @@
 // moment zichtbaar was, niet de verborgen handen.
 
 import { Bid, BidAction, evaluateBid } from "./bidding";
-import { Card, Contract, cardEquals, cardPoints, trickStrength } from "./cards";
+import { Card, Contract, cardEquals, cardPoints, isTrump, trickStrength } from "./cards";
 import { Rng } from "./deal";
 import { evaluateMoves } from "./montecarlo";
 import { Round } from "./round";
@@ -67,8 +67,10 @@ function label(c: Card): string {
   return `${c.rank} ${SUIT_WORD[c.suit]}`;
 }
 
-const DOUBT_GAP = 3.5;
-const MISTAKE_GAP = 10;
+// Drempels bewust ruim: Monte-Carlo heeft ruis, dus alleen duidelijke
+// verschillen markeren als verbeterpunt/fout (anders nag je over dichte keuzes).
+const DOUBT_GAP = 7;
+const MISTAKE_GAP = 18;
 
 function verdictFor(gap: number): Verdict {
   if (gap >= MISTAKE_GAP) return "fout";
@@ -99,17 +101,29 @@ function explainDecision(
   const opponentWinning = winnerSeat !== partnerOf(seat);
   const bestBeats = trickStrength(best, contract, ledSuit) > currentBest;
   const playedBeats = trickStrength(played, contract, ledSuit) > currentBest;
+  const bestIsTrump = isTrump(best, contract);
+  const ledIsTrump = contract.type === "kleur" && ledSuit === contract.troef;
+  const g = Math.round(gap);
 
   if (opponentWinning && bestBeats && !playedBeats) {
-    return `Je liet de slag lopen. Met ${better} had je 'm overgenomen (scheelt gem. ${Math.round(gap)} punten).`;
+    if (bestIsTrump && !ledIsTrump) {
+      return `Je had kunnen introeven met ${better} en de slag (met de punten) pakken — nu ging die naar de tegenstander (scheelt gem. ${g}).`;
+    }
+    if (bestIsTrump && ledIsTrump) {
+      return `${better} is hier de hoogste troef: daarmee troef je over de tegenstander heen en pak je de slag. Laag bijspelen geeft de slag (en de punten) weg (scheelt gem. ${g}).`;
+    }
+    return `Je liet de slag lopen — met ${better} had je 'm overgenomen (scheelt gem. ${g} punten).`;
   }
   if (!bestBeats && !playedBeats && cardPoints(played, contract) > cardPoints(best, contract)) {
-    return `Onnodig duur afgegeven; ${better} was zuiniger (scheelt gem. ${Math.round(gap)} punten).`;
+    return `Onnodig duur afgegeven; ${better} was zuiniger (scheelt gem. ${g} punten).`;
   }
   if (!opponentWinning && cardPoints(best, contract) > cardPoints(played, contract)) {
-    return `Je maat won de slag al — met ${better} had je meer punten meegegeven (gem. +${Math.round(gap)}).`;
+    return `Je maat won de slag al — met ${better} had je meer punten meegegeven (gem. +${g}).`;
   }
-  return `Beter was ${better} (scheelt gem. ${Math.round(gap)} punten).`;
+  if (opponentWinning && !bestBeats && !playedBeats && cardPoints(best, contract) > cardPoints(played, contract)) {
+    return `Je verliest deze slag hoe dan ook, maar gooi dan liever de hogere ${better} af — die raak je later toch kwijt, en zo vallen die punten vaker aan je eigen kant (scheelt gem. ${g}).`;
+  }
+  return `Beter was ${better} (scheelt gem. ${g} punten).`;
 }
 
 function reviewBid(rec: RoundRecord): BidReview {

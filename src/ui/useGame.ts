@@ -396,7 +396,7 @@ export function useGame(): GameApi {
   const requestReview = useCallback(() => {
     if (!recordRef.current) return;
     if (!reviewRef.current) {
-      reviewRef.current = reviewRound(recordRef.current, { determinizations: 80, rng: Math.random });
+      reviewRef.current = reviewRound(recordRef.current, { determinizations: 200, rng: Math.random });
     }
     reviewOpenRef.current = true;
     sync();
@@ -411,7 +411,7 @@ export function useGame(): GameApi {
   // fouten meteen op de knop staat). Draait na de paint, dus de eindstand is al zichtbaar.
   useEffect(() => {
     if (phaseRef.current === "klaar" && recordRef.current && !reviewRef.current) {
-      reviewRef.current = reviewRound(recordRef.current, { determinizations: 60, rng: Math.random });
+      reviewRef.current = reviewRound(recordRef.current, { determinizations: 200, rng: Math.random });
       sync();
     }
   });
