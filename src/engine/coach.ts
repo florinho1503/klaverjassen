@@ -2,6 +2,7 @@
 // Oordeel is "eerlijk": de Monte-Carlo-evaluator gebruikt alleen wat op dat
 // moment zichtbaar was, niet de verborgen handen.
 
+import { RoundAnalysis, analyzeRound } from "./analyze";
 import { Bid, BidAction, evaluateBid } from "./bidding";
 import { Card, Contract, cardEquals, cardPoints, isTrump, trickStrength } from "./cards";
 import { Rng } from "./deal";
@@ -126,6 +127,42 @@ function explainDecision(
   return `Beter was ${better} (scheelt gem. ${g} punten).`;
 }
 
+/**
+ * Diepere, kaart-tellende tip: welke hogere kaarten van dezelfde kleur zijn nog
+ * niet gevallen, en zit je maat die kleur al kwijt? (Alleen bij een gemarkeerde zet.)
+ */
+export function deeperTip(
+  played: Card,
+  contract: Contract,
+  a: RoundAnalysis,
+  trickSoFar: Play[],
+  verdict: Verdict,
+): string {
+  if (verdict === "goed") return "";
+
+  const higher = a.unseen.filter(
+    (u) =>
+      u.suit === played.suit &&
+      trickStrength(u, contract, played.suit) > trickStrength(played, contract, played.suit),
+  );
+  if (higher.length === 0) return "";
+
+  const top = higher.reduce((x, y) =>
+    trickStrength(y, contract, played.suit) > trickStrength(x, contract, played.suit) ? y : x,
+  );
+  const partnerVoid = a.voids[a.partner].has(played.suit);
+
+  if (isTrump(played, contract)) {
+    return partnerVoid
+      ? ` 💡 De ${label(top)} is nog niet gevallen én je maat zit zonder troef — die hoogste troef heeft dus een tegenstander, en je ${label(played)} kan er nog onder.`
+      : ` 💡 De ${label(top)} is nog niet gevallen, dus je ${label(played)} is nog niet de baas in troef.`;
+  }
+  if (trickSoFar.length === 0) {
+    return ` 💡 Je kwam uit met ${label(played)}, maar de ${label(top)} is nog niet gevallen — die kan 'm pakken.`;
+  }
+  return "";
+}
+
 function reviewBid(rec: RoundRecord): BidReview {
   const hand = rec.hands[rec.reviewSeat];
   const worth: Bid | null = evaluateBid(hand);
@@ -203,6 +240,7 @@ export function reviewRound(
       if (legal.length > 1) {
         const trickSoFar = [...round.currentTrick];
         const handAtDecision = [...round.handOf(rec.reviewSeat)];
+        const analysis = analyzeRound(round);
         const values = evaluateMoves(round, {
           determinizations: options.determinizations ?? 80,
           rng: options.rng,
@@ -211,6 +249,9 @@ export function reviewRound(
         const best = values.reduce((b, x) => (x.value > b.value ? x : b));
         const gap = best.value - played;
         const verdict = verdictFor(gap);
+        const explanation =
+          explainDecision(rec.contract, trickSoFar, play.card, best.card, gap, verdict, rec.reviewSeat) +
+          deeperTip(play.card, rec.contract, analysis, trickSoFar, verdict);
         decisions.push({
           trickNumber: round.tricks.length + 1,
           trickSoFar,
@@ -219,15 +260,7 @@ export function reviewRound(
           bestCard: best.card,
           gap,
           verdict,
-          explanation: explainDecision(
-            rec.contract,
-            trickSoFar,
-            play.card,
-            best.card,
-            gap,
-            verdict,
-            rec.reviewSeat,
-          ),
+          explanation,
         });
       }
     }

@@ -4,8 +4,9 @@ import { deal } from "./deal";
 import { heuristicBot } from "./bot";
 import { Round } from "./round";
 import { Play, Seat } from "./trick";
-import { RoundRecord, reviewRound } from "./coach";
-import { seededRng } from "./testHelpers";
+import { RoundRecord, deeperTip, reviewRound } from "./coach";
+import { analyzeRound } from "./analyze";
+import { card, cards, seededRng } from "./testHelpers";
 
 const troef: Contract = { type: "kleur", troef: "klaveren" };
 
@@ -46,6 +47,20 @@ describe("reviewRound", () => {
       expect(d.handAtDecision.length).toBeGreaterThan(0);
     }
     expect(["goed", "twijfel", "fout"]).toContain(review.bid.verdict);
+  });
+
+  it("deeperTip waarschuwt voor een nog-niet-gevallen hogere troef", () => {
+    const hands = [
+      cards("Bk", "7k", "8k", "10k", "Vk", "Hk", "Ak", "7s"), // heeft de troefboer
+      cards("7r", "8r", "9r", "10r", "Br", "Vr", "Hr", "Ar"),
+      cards("9k", "7h", "8h", "9h", "10h", "Bh", "Vh", "Hh"), // mens: 9 troef, geen boer
+      cards("Ah", "8s", "9s", "10s", "Bs", "Vs", "Hs", "As"),
+    ];
+    const round = new Round({ contract: troef, makerTeam: 0, bid: 90, hands, firstLeader: 2 });
+    const a = analyzeRound(round);
+    const tip = deeperTip(card("9k"), troef, a, [], "twijfel");
+    expect(tip).toContain("💡");
+    expect(tip).toMatch(/B klaveren/); // de troefboer is nog niet gevallen
   });
 
   it("beoordeelt het bod als twijfel bij bieden met een zwakke hand", () => {
