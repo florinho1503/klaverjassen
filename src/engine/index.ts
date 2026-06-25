@@ -3,6 +3,7 @@ export * from "./trick";
 export * from "./legalMoves";
 export * from "./roem";
 export * from "./scoring";
+export * from "./klop";
 export * from "./deal";
 export * from "./round";
 export * from "./bot";

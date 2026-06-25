@@ -19,6 +19,7 @@ import {
   SUITS,
   Seat,
   Team,
+  FOUTE_KLOP_PENALTY,
   biddingBot,
   cardBotFor,
   cardEquals,
@@ -27,6 +28,8 @@ import {
   nextSeat,
   reviewRound,
   roundFromAuction,
+  scoreWithKlop,
+  teamOf,
 } from "../engine";
 
 export const HUMAN: Seat = 2;
@@ -34,6 +37,8 @@ export const HUMAN: Seat = 2;
 const BID_DELAY_MS = 3000;
 const PLAY_DELAY_MS = 3000;
 const ERROR_CLEAR_MS = 2600;
+const KLOP_CLEAR_MS = 2600;
+const HUMAN_TEAM = teamOf(HUMAN);
 
 export type Phase = "start" | "bieden" | "spelen" | "klaar";
 
@@ -87,6 +92,10 @@ export interface GameView {
   /** Punten + roem van de zojuist voltooide slag (tijdens pauze). */
   trickPoints: number | null;
   trickRoem: number | null;
+  /** Mag de speler nu 'Klop' klikken (eigen team won de slag, nog niet geklopt)? */
+  canKlop: boolean;
+  /** Transiente klop-feedback ('Goeie klop!', 'Geen geldig klopje!', enz.). */
+  klopMessage: string | null;
   contract: Contract | null;
   bid: number | null;
   makerSeat: Seat | null;
@@ -124,6 +133,7 @@ export interface GameApi {
   view: GameView;
   begin: (difficulty: Difficulty, target: GameTarget) => void;
   humanPlay: (card: Card) => void;
+  humanKlop: () => void;
   humanBid: (action: BidAction) => void;
   continueTrick: () => void;
   nextRound: () => void;
@@ -145,6 +155,9 @@ export function useGame(): GameApi {
   const targetRef = useRef<GameTarget | null>(null);
   const historyRef = useRef<TelstaatRow[]>([]);
   const pausedRef = useRef(false);
+  const kloppedRef = useRef<Set<number>>(new Set());
+  const klopMsgRef = useRef<string | null>(null);
+  const klopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorRef = useRef<PlayError | null>(null);
   const errorNonceRef = useRef(0);
   const recordRef = useRef<RoundRecord | null>(null);
@@ -214,6 +227,14 @@ export function useGame(): GameApi {
       round && round.tricks.length > 0 ? round.tricks[round.tricks.length - 1] : null;
     const showCompleted = (paused || phase === "klaar") && lastCompleted !== null;
 
+    // Mag de speler kloppen? (pauze, eigen team won de slag, nog niet geklopt)
+    const lastTrickIdx = round ? round.tricks.length - 1 : -1;
+    const canKlop =
+      paused &&
+      lastCompleted !== null &&
+      lastCompleted.winnerTeam === HUMAN_TEAM &&
+      !kloppedRef.current.has(lastTrickIdx);
+
     // Potje afgelopen?
     const target = targetRef.current;
     const total = totalRef.current;
@@ -244,6 +265,8 @@ export function useGame(): GameApi {
       trickWinnerSeat: showCompleted ? lastCompleted!.winnerSeat : null,
       trickPoints: paused && lastCompleted ? lastCompleted.cardPoints : null,
       trickRoem: paused && lastCompleted ? lastCompleted.roem : null,
+      canKlop,
+      klopMessage: klopMsgRef.current,
       contract: round?.contract ?? null,
       bid: round?.bid ?? null,
       makerSeat: auction?.currentHighest?.seat ?? null,
@@ -281,6 +304,8 @@ export function useGame(): GameApi {
       reviewRef.current = null;
       reviewOpenRef.current = false;
       humanBidsRef.current = [];
+      kloppedRef.current = new Set();
+      klopMsgRef.current = null;
       phaseRef.current = "bieden";
       sync();
     },
@@ -289,7 +314,23 @@ export function useGame(): GameApi {
 
   const finalizeRound = useCallback(() => {
     const round = roundRef.current!;
-    const result = round.result();
+    // Roem van ons team telt alleen bij een geklopte slag; foute klop straft
+    // (middel/moeilijk). Zie scoreWithKlop.
+    const result = scoreWithKlop({
+      contract: round.contract,
+      bid: round.bid,
+      makerTeam: round.makerTeam,
+      tricks: round.tricks.map((t) => ({
+        winnerTeam: t.winnerTeam,
+        cardPoints: t.cardPoints,
+        roem: t.roem,
+        isLast: t.isLast,
+      })),
+      klopTeam: HUMAN_TEAM,
+      klopped: kloppedRef.current,
+      strict: difficultyRef.current !== "makkelijk",
+    });
+
     resultRef.current = result;
     totalRef.current = [
       totalRef.current[0] + result.paper[0],
@@ -361,15 +402,11 @@ export function useGame(): GameApi {
       if (!round || round.isComplete) return;
       const tricksBefore = round.tricks.length;
       round.play(card);
-      if (round.isComplete) {
-        finalizeRound();
-        return;
-      }
-      // Een slag zojuist voltooid → pauzeer tot de speler op 'Volgende slag' klikt.
+      // Na elke voltooide slag (ook de laatste) pauzeren, zodat je kunt kloppen.
       if (round.tricks.length > tricksBefore) pausedRef.current = true;
       sync();
     },
-    [finalizeRound, sync],
+    [sync],
   );
 
   const begin = useCallback(
@@ -483,11 +520,59 @@ export function useGame(): GameApi {
     [applyPlay, sync],
   );
 
+  const flashKlop = useCallback(
+    (msg: string) => {
+      klopMsgRef.current = msg;
+      if (klopTimerRef.current) clearTimeout(klopTimerRef.current);
+      klopTimerRef.current = setTimeout(() => {
+        klopMsgRef.current = null;
+        sync();
+      }, KLOP_CLEAR_MS);
+      sync();
+    },
+    [sync],
+  );
+
+  const humanKlop = useCallback(() => {
+    const round = roundRef.current;
+    if (!pausedRef.current || !round) return;
+    const idx = round.tricks.length - 1;
+    const last = round.tricks[idx];
+    if (!last || last.winnerTeam !== HUMAN_TEAM || kloppedRef.current.has(idx)) return;
+
+    if (last.roem > 0) {
+      kloppedRef.current.add(idx);
+      flashKlop(`👍 Goeie klop! +${last.roem} roem.`);
+    } else if (difficultyRef.current === "makkelijk") {
+      flashKlop("Geen geldig klopje hier!");
+    } else {
+      kloppedRef.current.add(idx); // registreren voor de straf
+      flashKlop(`❌ Foute klop! ${FOUTE_KLOP_PENALTY} punten naar de tegenstander.`);
+    }
+  }, [flashKlop]);
+
   const continueTrick = useCallback(() => {
-    if (!pausedRef.current) return;
+    const round = roundRef.current;
+    if (!pausedRef.current || !round) return;
+    const idx = round.tricks.length - 1;
+    const last = round.tricks[idx];
+    const forgotKlop =
+      !!last && last.winnerTeam === HUMAN_TEAM && last.roem > 0 && !kloppedRef.current.has(idx);
+
+    if (forgotKlop) {
+      if (difficultyRef.current === "makkelijk") {
+        // Herinner én blokkeer: je mag alsnog kloppen.
+        flashKlop("💡 Vergeet niet te kloppen! Klik op 'Klop'.");
+        return;
+      }
+      // middel/moeilijk: roem vervalt
+      flashKlop(`Je vergat te kloppen — ${last.roem} roem vervallen.`);
+    }
+
     pausedRef.current = false;
-    sync();
-  }, [sync]);
+    if (round.isComplete) finalizeRound();
+    else sync();
+  }, [finalizeRound, flashKlop, sync]);
 
   const humanBid = useCallback(
     (action: BidAction) => {
@@ -510,6 +595,7 @@ export function useGame(): GameApi {
   useEffect(
     () => () => {
       if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      if (klopTimerRef.current) clearTimeout(klopTimerRef.current);
     },
     [],
   );
@@ -518,6 +604,7 @@ export function useGame(): GameApi {
     view: buildView(),
     begin,
     humanPlay,
+    humanKlop,
     humanBid,
     continueTrick,
     nextRound,

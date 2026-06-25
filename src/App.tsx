@@ -146,6 +146,7 @@ export function App() {
     view,
     begin,
     humanPlay,
+    humanKlop,
     humanBid,
     continueTrick,
     nextRound,
@@ -184,6 +185,12 @@ export function App() {
 
         <div className="center">
           <TrickView view={view} />
+          {view.canKlop && (
+            <button type="button" className="klop-btn" onClick={humanKlop}>
+              Klop!
+            </button>
+          )}
+          {view.klopMessage && <div className="klop-msg">{view.klopMessage}</div>}
         </div>
 
         <div className="south">
