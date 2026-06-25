@@ -4,7 +4,7 @@ import { deal } from "./deal";
 import { heuristicBot } from "./bot";
 import { Round } from "./round";
 import { Play, Seat } from "./trick";
-import { RoundRecord, deeperTip, reviewRound, ruffWarning, sureWinnerTip } from "./coach";
+import { RoundRecord, deeperTip, keepTrumpTip, reviewRound, ruffWarning, sureWinnerTip } from "./coach";
 import { RoundAnalysis, analyzeRound } from "./analyze";
 import { card, cards, seededRng } from "./testHelpers";
 
@@ -97,6 +97,22 @@ describe("reviewRound", () => {
     const tip = sureWinnerTip(card("7h"), card("Ah"), a, [], "twijfel");
     expect(tip).toContain("💡");
     expect(tip).toMatch(/hoogste harten/);
+  });
+
+  it("keepTrumpTip wijst erop dat je met weinig troef je troef beter bewaart", () => {
+    const harten: Contract = { type: "kleur", troef: "harten" };
+    const hands = [
+      cards("9h", "10h", "7k", "9k", "8r", "7s", "8s", "9s"), // mens: maar 2 troeven (9h,10h)
+      cards("7h", "8h", "Bh", "Vh", "Hh", "Ah", "8k", "10k"),
+      cards("Bk", "Vk", "Hk", "Ak", "7r", "9r", "10r", "Br"),
+      cards("Vr", "Hr", "Ar", "10s", "Bs", "Vs", "Hs", "As"),
+    ];
+    const round = new Round({ contract: harten, makerTeam: 0, bid: 100, hands, firstLeader: 0 });
+    const a = analyzeRound(round);
+    const tip = keepTrumpTip(card("9h"), card("7k"), harten, a, [], "fout");
+    expect(tip).toContain("💡");
+    expect(tip).toMatch(/troef/);
+    expect(tip).toContain("2");
   });
 
   it("beoordeelt het bod als twijfel bij bieden met een zwakke hand", () => {

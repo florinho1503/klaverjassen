@@ -166,6 +166,8 @@ export interface MoveValue {
   card: Card;
   /** Gemiddeld puntenverschil (mijn team − tegenpartij) over de uitdelingen. */
   value: number;
+  /** Aandeel uitdelingen waarin de maker zijn bod haalt (niet nat). */
+  makeRate: number;
 }
 
 /**
@@ -183,6 +185,7 @@ export function evaluateMoves(round: Round, options: MonteCarloOptions = {}): Mo
   const myTeam: Team = a.team;
   const counts = [0, 1, 2, 3].map((s) => round.handOf(s as Seat).length);
   const totals = legal.map(() => 0);
+  const made = legal.map(() => 0);
   let samples = 0;
 
   for (let i = 0; i < N; i++) {
@@ -198,10 +201,15 @@ export function evaluateMoves(round: Round, options: MonteCarloOptions = {}): Mo
         tricks,
       });
       totals[idx] += res.points[myTeam] - res.points[myTeam === 0 ? 1 : 0];
+      if (!res.nat) made[idx] += 1;
     });
   }
 
-  return legal.map((card, idx) => ({ card, value: samples ? totals[idx] / samples : 0 }));
+  return legal.map((card, idx) => ({
+    card,
+    value: samples ? totals[idx] / samples : 0,
+    makeRate: samples ? made[idx] / samples : 0,
+  }));
 }
 
 export function makeMonteCarloBot(options: MonteCarloOptions = {}): Bot {

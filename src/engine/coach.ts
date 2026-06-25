@@ -8,7 +8,7 @@ import { Card, Contract, cardEquals, cardPoints, isTrump, trickStrength } from "
 import { Rng } from "./deal";
 import { evaluateMoves } from "./montecarlo";
 import { Round } from "./round";
-import { Play, Seat, Team, partnerOf, trickWinnerSeat } from "./trick";
+import { Play, Seat, Team, partnerOf, teamOf, trickWinnerSeat } from "./trick";
 
 export type Verdict = "goed" | "twijfel" | "fout";
 
@@ -171,6 +171,24 @@ export function deeperTip(
   return "";
 }
 
+/** Troef bewaren: je speelde een troef uit terwijl je er weinig hebt. */
+export function keepTrumpTip(
+  played: Card,
+  best: Card,
+  contract: Contract,
+  a: RoundAnalysis,
+  trickSoFar: Play[],
+  verdict: Verdict,
+): string {
+  if (verdict === "goed") return "";
+  if (trickSoFar.length !== 0) return ""; // alleen bij uitkomen
+  if (!isTrump(played, contract)) return "";
+  if (isTrump(best, contract)) return ""; // beter was ook troef → ander advies
+  const myTrumps = a.myHand.filter((c) => isTrump(c, contract)).length;
+  if (myTrumps > 3) return ""; // met veel troef kun je juist trekken
+  return ` 💡 Je speelde een troef uit terwijl je er maar ${myTrumps} hebt — met zo weinig troef bewaar je die liever om de hoge kaarten (azen/tienen) van de tegenstander af te troeven, in plaats van 'm nu weg te spelen.`;
+}
+
 /** Gemiste zekere slag: de beste zet was een baas-kaart die je niet cashte. */
 export function sureWinnerTip(
   played: Card,
@@ -287,17 +305,33 @@ export function reviewRound(
           determinizations: options.determinizations ?? 80,
           rng: options.rng,
         });
-        const played = values.find((v) => cardEquals(v.card, play.card))?.value ?? 0;
+        const playedMV = values.find((v) => cardEquals(v.card, play.card));
+        const playedVal = playedMV?.value ?? 0;
+        const playedMakeRate = playedMV?.makeRate ?? 0;
         const best = values.reduce((b, x) => (x.value > b.value ? x : b));
-        const gap = best.value - played;
+        const gap = best.value - playedVal;
         const verdict = verdictFor(gap);
+
         const tip =
           ruffWarning(play.card, rec.contract, analysis, trickSoFar, verdict) ||
           sureWinnerTip(play.card, best.card, analysis, trickSoFar, verdict) ||
+          keepTrumpTip(play.card, best.card, rec.contract, analysis, trickSoFar, verdict) ||
           deeperTip(play.card, rec.contract, analysis, trickSoFar, verdict);
+
+        // Concrete consequentie: hoe vaak wordt het bod gehaald met elke zet?
+        let consequence = "";
+        if (verdict !== "goed" && Math.abs(best.makeRate - playedMakeRate) >= 0.12) {
+          const pct = (r: number) => Math.round(r * 100);
+          consequence =
+            teamOf(rec.reviewSeat) === rec.makerTeam
+              ? ` In de simulaties haal je je bod met ${label(best.card)} in ${pct(best.makeRate)}% van de gevallen, en met je gekozen kaart in ${pct(playedMakeRate)}%.`
+              : ` In de simulaties gaat de tegenpartij nat met ${label(best.card)} in ${pct(1 - best.makeRate)}% van de gevallen, en met je gekozen kaart in ${pct(1 - playedMakeRate)}%.`;
+        }
+
         const explanation =
           explainDecision(rec.contract, trickSoFar, play.card, best.card, gap, verdict, rec.reviewSeat) +
-          tip;
+          tip +
+          consequence;
         decisions.push({
           trickNumber: round.tricks.length + 1,
           trickSoFar,
