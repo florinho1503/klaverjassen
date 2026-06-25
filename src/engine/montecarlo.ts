@@ -17,6 +17,7 @@ import {
   trickStrength,
 } from "./cards";
 import { analyzeRound } from "./analyze";
+import type { AuctionLogEntry } from "./bidding";
 import type { Bot } from "./bot";
 import { Rng, shuffle } from "./deal";
 import { legalMoves } from "./legalMoves";
@@ -54,6 +55,39 @@ function rolloutPick(legal: Card[], trick: Play[], contract: Contract, seat: Sea
   return [...legal].sort((a, b) => pts(a) - pts(b))[0];
 }
 
+// --- Bied-inferentie: zachte weging van wie welke kaart waarschijnlijk heeft ---
+
+type Affinity = (seat: Seat, card: Card) => number;
+
+const UNIFORM: Affinity = () => 1;
+
+/**
+ * Leidt uit het biedverloop zachte voorkeuren af: wie een kleur bood heeft daar
+ * waarschijnlijk de honneurs (B/9) + azen; wie sans bood azen/tienen; wie alleen
+ * paste eerder een zwakke hand. Bewust mild (bluffen mag).
+ */
+export function buildAffinity(bids: AuctionLogEntry[]): Affinity {
+  const colour: Record<Seat, Set<string>> = { 0: new Set(), 1: new Set(), 2: new Set(), 3: new Set() };
+  const sans: Record<Seat, boolean> = { 0: false, 1: false, 2: false, 3: false };
+  const everBid: Record<Seat, boolean> = { 0: false, 1: false, 2: false, 3: false };
+
+  for (const e of bids) {
+    if (e.action === "pas") continue;
+    everBid[e.seat] = true;
+    if (e.action.contract.type === "sans") sans[e.seat] = true;
+    else colour[e.seat].add(e.action.contract.troef);
+  }
+
+  return (seat, card) => {
+    let w = 1;
+    if (colour[seat].has(card.suit) && (card.rank === "B" || card.rank === "9")) w *= 1.8;
+    if (colour[seat].size > 0 && card.rank === "A") w *= 1.25;
+    if (sans[seat] && (card.rank === "A" || card.rank === "10")) w *= 1.5;
+    if (!everBid[seat] && ["B", "9", "A", "10"].includes(card.rank)) w *= 0.8;
+    return w;
+  };
+}
+
 // --- Uitdeling samplen met void-constraints en juiste handgroottes ---
 
 function trySample(
@@ -64,6 +98,7 @@ function trySample(
   voids: Record<Seat, Set<Suit>>,
   rng: Rng,
   honorVoids: boolean,
+  affinity: Affinity,
 ): Card[][] | null {
   const others = ([0, 1, 2, 3] as Seat[]).filter((s) => s !== me);
   const need: Record<number, number> = {};
@@ -76,7 +111,7 @@ function trySample(
   const eligibleSeats = (suit: Suit) =>
     others.filter((s) => need[s] > 0 && (!honorVoids || !voids[s].has(suit)));
 
-  // Meest beperkte kaarten eerst (minste mogelijke ontvangers), daarna willekeurig.
+  // Meest beperkte kaarten eerst (minste mogelijke ontvangers), daarna gewogen.
   const ordered = shuffle(unseen, rng).sort(
     (a, b) => eligibleSeats(a.suit).length - eligibleSeats(b.suit).length,
   );
@@ -84,7 +119,18 @@ function trySample(
   for (const c of ordered) {
     const elig = eligibleSeats(c.suit);
     if (elig.length === 0) return null;
-    const pick = elig[Math.floor(rng() * elig.length)];
+    // Gewogen keuze op basis van bied-inferentie.
+    const weights = elig.map((s) => affinity(s, c));
+    const total = weights.reduce((a, b) => a + b, 0);
+    let r = rng() * total;
+    let pick = elig[elig.length - 1];
+    for (let i = 0; i < elig.length; i++) {
+      r -= weights[i];
+      if (r <= 0) {
+        pick = elig[i];
+        break;
+      }
+    }
     assigned[pick].push(c);
     need[pick]--;
   }
@@ -101,13 +147,14 @@ function sampleDeal(
   counts: number[],
   voids: Record<Seat, Set<Suit>>,
   rng: Rng,
+  affinity: Affinity,
 ): Card[][] | null {
   for (let t = 0; t < 30; t++) {
-    const res = trySample(myHand, me, unseen, counts, voids, rng, true);
+    const res = trySample(myHand, me, unseen, counts, voids, rng, true, affinity);
     if (res) return res;
   }
   // Lukt het niet met voids, laat de constraint dan vallen (zeldzaam).
-  return trySample(myHand, me, unseen, counts, voids, rng, false);
+  return trySample(myHand, me, unseen, counts, voids, rng, false, affinity);
 }
 
 // --- Eén ronde uitspelen vanaf de huidige (deel)stand ---
@@ -184,12 +231,13 @@ export function evaluateMoves(round: Round, options: MonteCarloOptions = {}): Mo
   const a = analyzeRound(round);
   const myTeam: Team = a.team;
   const counts = [0, 1, 2, 3].map((s) => round.handOf(s as Seat).length);
+  const affinity = round.bids.length > 0 ? buildAffinity(round.bids) : UNIFORM;
   const totals = legal.map(() => 0);
   const made = legal.map(() => 0);
   let samples = 0;
 
   for (let i = 0; i < N; i++) {
-    const sampled = sampleDeal(a.myHand, a.me, a.unseen, counts, a.voids, rng);
+    const sampled = sampleDeal(a.myHand, a.me, a.unseen, counts, a.voids, rng, affinity);
     if (!sampled) continue;
     samples++;
     legal.forEach((move, idx) => {

@@ -3,7 +3,7 @@
 // moment zichtbaar was, niet de verborgen handen.
 
 import { RoundAnalysis, analyzeRound } from "./analyze";
-import { Bid, BidAction, evaluateBid } from "./bidding";
+import { AuctionLogEntry, Bid, BidAction, evaluateBid } from "./bidding";
 import { Card, Contract, cardEquals, cardPoints, isTrump, trickStrength } from "./cards";
 import { Rng } from "./deal";
 import { evaluateMoves } from "./montecarlo";
@@ -55,6 +55,8 @@ export interface RoundRecord {
   sequence: Play[];
   reviewSeat: Seat;
   humanBids: HumanBidTurn[];
+  /** Volledig biedverloop (alle spelers) voor bied-inferentie. */
+  auctionLog: AuctionLogEntry[];
 }
 
 const SUIT_WORD: Record<Card["suit"], string> = {
@@ -290,6 +292,7 @@ export function reviewRound(
     bid: rec.bid,
     hands: rec.hands,
     firstLeader: rec.firstLeader,
+    bids: rec.auctionLog,
   });
 
   const decisions: DecisionReview[] = [];

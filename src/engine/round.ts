@@ -1,5 +1,6 @@
 // Rondeloop: speelt één ronde (8 slagen) af. Zie REGELS.md.
 
+import type { AuctionLogEntry } from "./bidding";
 import { Card, Contract, cardEquals, cardPoints } from "./cards";
 import { isLegalMove, legalMoves } from "./legalMoves";
 import { roemInTrick } from "./roem";
@@ -33,6 +34,8 @@ export interface RoundConfig {
   hands: Card[][];
   /** Wie komt uit voor de eerste slag? Standaard zitplaats 0. */
   firstLeader?: Seat;
+  /** Het biedverloop (alle spelers) — gebruikt voor bied-inferentie. */
+  bids?: AuctionLogEntry[];
 }
 
 /**
@@ -43,6 +46,7 @@ export class Round {
   readonly contract: Contract;
   readonly makerTeam: Team;
   readonly bid: number;
+  readonly bids: AuctionLogEntry[];
 
   private readonly hands: Card[][];
   private trick: Play[] = [];
@@ -56,6 +60,7 @@ export class Round {
     this.contract = config.contract;
     this.makerTeam = config.makerTeam;
     this.bid = config.bid;
+    this.bids = config.bids ?? [];
     this.hands = config.hands.map((h) => [...h]);
     this.turn = config.firstLeader ?? 0;
   }

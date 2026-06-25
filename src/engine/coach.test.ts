@@ -29,6 +29,7 @@ function recordFullRound(seed: number, reviewSeat: Seat): RoundRecord {
     sequence,
     reviewSeat,
     humanBids: [{ highest: null, action: { value: 90, contract: troef } }],
+    auctionLog: [],
   };
 }
 

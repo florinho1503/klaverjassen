@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { Card, Contract } from "./cards";
 import { deal } from "./deal";
 import { Round, playRound } from "./round";
-import { makeMonteCarloBot } from "./montecarlo";
+import { buildAffinity, makeMonteCarloBot } from "./montecarlo";
+import { Bid } from "./bidding";
 import { card, cards, seededRng } from "./testHelpers";
 
 const troef: Contract = { type: "kleur", troef: "klaveren" };
@@ -26,6 +27,21 @@ describe("makeMonteCarloBot", () => {
       bot,
     );
     expect(typeof res.nat).toBe("boolean");
+  });
+
+  it("buildAffinity: wie een kleur bood krijgt die honneurs vaker toebedeeld", () => {
+    const klaverenBid: Bid = { value: 80, contract: { type: "kleur", troef: "klaveren" } };
+    const aff = buildAffinity([
+      { seat: 0, action: klaverenBid }, // seat 0 bood klaveren
+      { seat: 1, action: "pas" },
+      { seat: 3, action: "pas" },
+    ]);
+    // seat 0 heeft meer kans op de klaver-9 dan een speler die paste
+    expect(aff(0, card("9k"))).toBeGreaterThan(1);
+    expect(aff(0, card("9k"))).toBeGreaterThan(aff(1, card("9k")));
+    // sans-bieder krijgt azen/tienen vaker
+    const sansAff = buildAffinity([{ seat: 2, action: { value: 80, contract: { type: "sans" } } }]);
+    expect(sansAff(2, card("Ah"))).toBeGreaterThan(1);
   });
 
   it("kiest de enige geldige zet zonder simulatie", () => {

@@ -318,6 +318,7 @@ export function useGame(): GameApi {
       sequence: round.tricks.flatMap((t) => t.plays.map((p) => ({ seat: p.seat, card: p.card }))),
       reviewSeat: HUMAN,
       humanBids: humanBidsRef.current,
+      auctionLog: [...round.bids],
     };
     phaseRef.current = "klaar";
     sync();
@@ -333,7 +334,12 @@ export function useGame(): GameApi {
       sync();
       return;
     }
-    roundRef.current = roundFromAuction(result, handsRef.current, nextSeat(dealerRef.current));
+    roundRef.current = roundFromAuction(
+      result,
+      handsRef.current,
+      nextSeat(dealerRef.current),
+      [...auction.log],
+    );
     phaseRef.current = "spelen";
     sync();
   }, [sync]);

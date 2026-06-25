@@ -177,6 +177,7 @@ export function roundFromAuction(
   result: AuctionResult,
   hands: Card[][],
   firstLeader: Seat,
+  bids?: AuctionLogEntry[],
 ): Round {
   return new Round({
     contract: result.bid.contract,
@@ -184,5 +185,6 @@ export function roundFromAuction(
     bid: result.bid.value,
     hands,
     firstLeader,
+    bids,
   });
 }
