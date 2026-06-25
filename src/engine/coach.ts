@@ -79,6 +79,14 @@ function verdictFor(gap: number): Verdict {
   return "goed";
 }
 
+// Een groot puntenverschil betekent meestal dat de zet het verschil maakt tussen
+// je bod halen en nat gaan — dat lezen we voor in plaats van een rauw getal.
+function stakesPhrase(gap: number): string {
+  const g = Math.round(gap);
+  if (g >= 30) return `dit kan het verschil zijn tussen je bod halen en nat gaan (gem. ${g} punten)`;
+  return `scheelt gem. ${g} punten`;
+}
+
 function explainDecision(
   contract: Contract,
   trickSoFar: Play[],
@@ -91,9 +99,10 @@ function explainDecision(
   if (verdict === "goed" || cardEquals(played, best)) return "Prima zet.";
 
   const better = label(best);
+  const tail = stakesPhrase(gap);
 
   if (trickSoFar.length === 0) {
-    return `Beter uitkomen met ${better} (scheelt gem. ${Math.round(gap)} punten).`;
+    return `Beter uitkomen met ${better} (${tail}).`;
   }
 
   const ledSuit = trickSoFar[0].card.suit;
@@ -104,27 +113,26 @@ function explainDecision(
   const playedBeats = trickStrength(played, contract, ledSuit) > currentBest;
   const bestIsTrump = isTrump(best, contract);
   const ledIsTrump = contract.type === "kleur" && ledSuit === contract.troef;
-  const g = Math.round(gap);
 
   if (opponentWinning && bestBeats && !playedBeats) {
     if (bestIsTrump && !ledIsTrump) {
-      return `Je had kunnen introeven met ${better} en de slag (met de punten) pakken — nu ging die naar de tegenstander (scheelt gem. ${g}).`;
+      return `Je had kunnen introeven met ${better} en de slag (met de punten) pakken — nu ging die naar de tegenstander (${tail}).`;
     }
     if (bestIsTrump && ledIsTrump) {
-      return `${better} is hier de hoogste troef: daarmee troef je over de tegenstander heen en pak je de slag. Laag bijspelen geeft de slag (en de punten) weg (scheelt gem. ${g}).`;
+      return `${better} is hier de hoogste troef: daarmee troef je over de tegenstander heen en pak je de slag. Laag bijspelen geeft de slag (en de punten) weg (${tail}).`;
     }
-    return `Je liet de slag lopen — met ${better} had je 'm overgenomen (scheelt gem. ${g} punten).`;
+    return `Je liet de slag lopen — met ${better} had je 'm overgenomen (${tail}).`;
   }
   if (!bestBeats && !playedBeats && cardPoints(played, contract) > cardPoints(best, contract)) {
-    return `Onnodig duur afgegeven; ${better} was zuiniger (scheelt gem. ${g} punten).`;
+    return `Onnodig duur afgegeven; ${better} was zuiniger (${tail}).`;
   }
   if (!opponentWinning && cardPoints(best, contract) > cardPoints(played, contract)) {
-    return `Je maat won de slag al — met ${better} had je meer punten meegegeven (gem. +${g}).`;
+    return `Je maat won de slag al — met ${better} had je meer punten meegegeven (${tail}).`;
   }
   if (opponentWinning && !bestBeats && !playedBeats && cardPoints(best, contract) > cardPoints(played, contract)) {
-    return `Je verliest deze slag hoe dan ook, maar gooi dan liever de hogere ${better} af — die raak je later toch kwijt, en zo vallen die punten vaker aan je eigen kant (scheelt gem. ${g}).`;
+    return `Je verliest deze slag hoe dan ook, maar gooi dan liever de hogere ${better} af — die raak je later toch kwijt, en zo vallen die punten vaker aan je eigen kant (${tail}).`;
   }
-  return `Beter was ${better} (scheelt gem. ${g} punten).`;
+  return `Beter was ${better} (${tail}).`;
 }
 
 /**
@@ -161,6 +169,25 @@ export function deeperTip(
     return ` 💡 Je kwam uit met ${label(played)}, maar de ${label(top)} is nog niet gevallen — die kan 'm pakken.`;
   }
   return "";
+}
+
+/** Aftroef-risico: kom je uit in een kleur die een tegenstander niet meer heeft? */
+export function ruffWarning(
+  played: Card,
+  contract: Contract,
+  a: RoundAnalysis,
+  trickSoFar: Play[],
+  verdict: Verdict,
+): string {
+  if (verdict === "goed") return "";
+  if (trickSoFar.length !== 0) return ""; // alleen bij uitkomen
+  if (contract.type !== "kleur") return ""; // sans: niets om mee af te troeven
+  if (isTrump(played, contract)) return "";
+  if (a.trumpsOut === 0) return ""; // geen troef meer buiten
+  const opponents = ([0, 1, 2, 3] as const).filter((s) => s !== a.me && s !== a.partner);
+  const voidOpp = opponents.some((o) => a.voids[o].has(played.suit));
+  if (!voidOpp) return "";
+  return ` 💡 Een tegenstander heeft geen ${played.suit} meer en er is nog troef buiten — door ${label(played)} uit te komen wordt-ie mogelijk afgetroefd.`;
 }
 
 function reviewBid(rec: RoundRecord): BidReview {
@@ -249,9 +276,12 @@ export function reviewRound(
         const best = values.reduce((b, x) => (x.value > b.value ? x : b));
         const gap = best.value - played;
         const verdict = verdictFor(gap);
+        const tip =
+          ruffWarning(play.card, rec.contract, analysis, trickSoFar, verdict) ||
+          deeperTip(play.card, rec.contract, analysis, trickSoFar, verdict);
         const explanation =
           explainDecision(rec.contract, trickSoFar, play.card, best.card, gap, verdict, rec.reviewSeat) +
-          deeperTip(play.card, rec.contract, analysis, trickSoFar, verdict);
+          tip;
         decisions.push({
           trickNumber: round.tricks.length + 1,
           trickSoFar,

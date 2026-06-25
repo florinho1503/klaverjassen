@@ -4,8 +4,8 @@ import { deal } from "./deal";
 import { heuristicBot } from "./bot";
 import { Round } from "./round";
 import { Play, Seat } from "./trick";
-import { RoundRecord, deeperTip, reviewRound } from "./coach";
-import { analyzeRound } from "./analyze";
+import { RoundRecord, deeperTip, reviewRound, ruffWarning } from "./coach";
+import { RoundAnalysis, analyzeRound } from "./analyze";
 import { card, cards, seededRng } from "./testHelpers";
 
 const troef: Contract = { type: "kleur", troef: "klaveren" };
@@ -61,6 +61,27 @@ describe("reviewRound", () => {
     const tip = deeperTip(card("9k"), troef, a, [], "twijfel");
     expect(tip).toContain("💡");
     expect(tip).toMatch(/B klaveren/); // de troefboer is nog niet gevallen
+  });
+
+  it("ruffWarning waarschuwt voor uitkomen in een kleur die een tegenstander mist", () => {
+    const a = {
+      me: 2,
+      partner: 0,
+      trumpsOut: 3,
+      voids: {
+        0: new Set<string>(),
+        1: new Set<string>(["ruiten"]), // tegenstander (Oost) zit zonder ruiten
+        2: new Set<string>(),
+        3: new Set<string>(),
+      },
+    } as unknown as RoundAnalysis;
+    const tip = ruffWarning(card("Ar"), troef, a, [], "fout");
+    expect(tip).toContain("💡");
+    expect(tip).toMatch(/afgetroefd/);
+
+    // Geen waarschuwing als er geen troef meer buiten is.
+    const a2 = { ...a, trumpsOut: 0 } as RoundAnalysis;
+    expect(ruffWarning(card("Ar"), troef, a2, [], "fout")).toBe("");
   });
 
   it("beoordeelt het bod als twijfel bij bieden met een zwakke hand", () => {
