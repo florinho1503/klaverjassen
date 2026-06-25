@@ -116,6 +116,26 @@ describe("evaluateBid — handwaardering", () => {
     expect(bid.contract).toEqual({ type: "sans" });
     expect(bid.value).toBe(100);
   });
+
+  it("biedt conservatief sans: 2 azen is niet genoeg voor 90 sans", () => {
+    // 2 azen, geen B/9 (dus geen kleurbod), geen gedekte tienen → te zwak voor sans
+    const hand = cards("Ah", "Ar", "7k", "8k", "7s", "8s", "7r", "Hr");
+    expect(evaluateBid(hand)).toBeNull();
+  });
+
+  it("3 azen → 80 sans (niet 90)", () => {
+    const hand = cards("Ah", "Ar", "As", "7k", "8k", "7s", "8h", "7r");
+    const bid = evaluateBid(hand)!;
+    expect(bid.contract).toEqual({ type: "sans" });
+    expect(bid.value).toBe(80);
+  });
+
+  it("4 azen → pas dan 90 sans", () => {
+    const hand = cards("Ah", "Ar", "As", "Ak", "7s", "8s", "7h", "8h");
+    const bid = evaluateBid(hand)!;
+    expect(bid.contract).toEqual({ type: "sans" });
+    expect(bid.value).toBe(90);
+  });
 });
 
 describe("biddingBot + runAuction", () => {

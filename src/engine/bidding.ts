@@ -138,13 +138,23 @@ export function evaluateBid(hand: Card[]): Bid | null {
     if (!best || value > best.value) best = { value, contract: { type: "kleur", troef: suit } };
   }
 
-  // Sansbod: gedreven door azen en tienen (sterk bij sans).
+  // Sansbod: gedreven door azen (zekere slagen) en GEDEKTE tienen. Bewust
+  // conservatief, want sans is veel zwaarder: 90 sans = 90/130 (69%) tegen
+  // 90 in een kleur = 90/162 (56%). Een kale tien telt niet mee (loopt onder de aas).
   const aces = hand.filter((c) => c.rank === "A").length;
-  const tens = hand.filter((c) => c.rank === "10").length;
-  const score = aces * 2 + tens;
-  if (score >= 3) {
-    const value = score >= 6 ? 100 : score >= 4 ? 90 : 80;
-    if (!best || value > best.value) best = { value, contract: { type: "sans" } };
+  let gedekteTens = 0;
+  for (const suit of SUITS) {
+    const inSuit = hand.filter((c) => c.suit === suit);
+    if (inSuit.length >= 2 && inSuit.some((c) => c.rank === "10")) gedekteTens++;
+  }
+  const sansScore = aces * 2 + gedekteTens;
+  let sansValue = 0;
+  if (sansScore >= 10) sansValue = 100;
+  else if (sansScore >= 8) sansValue = 90;
+  else if (sansScore >= 6) sansValue = 80;
+  else if (sansScore >= 5) sansValue = 70;
+  if (sansValue > 0 && (!best || sansValue > best.value)) {
+    best = { value: sansValue, contract: { type: "sans" } };
   }
 
   return best;
