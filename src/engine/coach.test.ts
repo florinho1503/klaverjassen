@@ -4,7 +4,7 @@ import { deal } from "./deal";
 import { heuristicBot } from "./bot";
 import { Round } from "./round";
 import { Play, Seat } from "./trick";
-import { RoundRecord, deeperTip, reviewRound, ruffWarning } from "./coach";
+import { RoundRecord, deeperTip, reviewRound, ruffWarning, sureWinnerTip } from "./coach";
 import { RoundAnalysis, analyzeRound } from "./analyze";
 import { card, cards, seededRng } from "./testHelpers";
 
@@ -82,6 +82,21 @@ describe("reviewRound", () => {
     // Geen waarschuwing als er geen troef meer buiten is.
     const a2 = { ...a, trumpsOut: 0 } as RoundAnalysis;
     expect(ruffWarning(card("Ar"), troef, a2, [], "fout")).toBe("");
+  });
+
+  it("sureWinnerTip wijst op een gemiste zekere slag (baas-kaart)", () => {
+    const hands = [
+      cards("Ah", "7h", "8h", "9h", "10h", "Bh", "Vh", "Hh"), // mens (seat 0 hier niet relevant)
+      cards("Ak", "7k", "8k", "9k", "10k", "Bk", "Vk", "Hk"),
+      cards("Ar", "7r", "8r", "9r", "10r", "Br", "Vr", "Hr"),
+      cards("As", "7s", "8s", "9s", "10s", "Bs", "Vs", "Hs"),
+    ];
+    const round = new Round({ contract: troef, makerTeam: 0, bid: 90, hands, firstLeader: 0 });
+    const a = analyzeRound(round); // seat 0 aan zet, houdt Ah (hoogste harten)
+    // hij komt uit met 7h terwijl Ah de baas is
+    const tip = sureWinnerTip(card("7h"), card("Ah"), a, [], "twijfel");
+    expect(tip).toContain("💡");
+    expect(tip).toMatch(/hoogste harten/);
   });
 
   it("beoordeelt het bod als twijfel bij bieden met een zwakke hand", () => {

@@ -171,6 +171,21 @@ export function deeperTip(
   return "";
 }
 
+/** Gemiste zekere slag: de beste zet was een baas-kaart die je niet cashte. */
+export function sureWinnerTip(
+  played: Card,
+  best: Card,
+  a: RoundAnalysis,
+  trickSoFar: Play[],
+  verdict: Verdict,
+): string {
+  if (verdict === "goed") return "";
+  if (trickSoFar.length !== 0) return ""; // alleen bij uitkomen
+  if (cardEquals(played, best)) return "";
+  if (!a.isHighestOfSuit(best)) return "";
+  return ` 💡 De ${label(best)} is de hoogste ${best.suit} die nog in het spel is — die had je veilig kunnen binnenhalen.`;
+}
+
 /** Aftroef-risico: kom je uit in een kleur die een tegenstander niet meer heeft? */
 export function ruffWarning(
   played: Card,
@@ -278,6 +293,7 @@ export function reviewRound(
         const verdict = verdictFor(gap);
         const tip =
           ruffWarning(play.card, rec.contract, analysis, trickSoFar, verdict) ||
+          sureWinnerTip(play.card, best.card, analysis, trickSoFar, verdict) ||
           deeperTip(play.card, rec.contract, analysis, trickSoFar, verdict);
         const explanation =
           explainDecision(rec.contract, trickSoFar, play.card, best.card, gap, verdict, rec.reviewSeat) +
