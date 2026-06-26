@@ -305,6 +305,7 @@ export function App() {
             </span>
           )}
           {view.assist && <CardValuesHint />}
+          {view.assist && <KlopHint />}
         </div>
         <TroefIndicator view={view} />
         <ScoreBoard view={view} />
@@ -397,6 +398,44 @@ function CardValuesHint() {
         <div className="hint__panel">
           <ValuesTable title="Troef" rows={TROEF_VALUES} />
           <ValuesTable title="Niet-troef" rows={PLAIN_VALUES} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+const KLOP_RULES: [string, number][] = [
+  ["Stuk (H + V troef)", 20],
+  ["3 op een rij", 20],
+  ["4 op een rij", 50],
+  ["4 op een rij + stuk", 70],
+];
+
+function KlopHint() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="hint">
+      <button
+        type="button"
+        className="hint__toggle"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        🃏 Klopjes {open ? "▲" : "▼"}
+      </button>
+      {open && (
+        <div className="hint__panel">
+          <table className="hint__table">
+            <caption>Klopjes (zelfde kleur, opeenvolgend)</caption>
+            <tbody>
+              {KLOP_RULES.map(([label, pts]) => (
+                <tr key={label}>
+                  <td className="hint__rank">{label}</td>
+                  <td className="hint__val">{pts}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
