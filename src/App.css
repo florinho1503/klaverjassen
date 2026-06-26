@@ -806,9 +806,10 @@ body {
 /* ---------- Mobiel ---------- */
 @media (max-width: 640px) {
   :root {
-    --card-w: 42px;
-    --card-h: 60px;
-    --trick-size: 156px;
+    /* Schaal de kaart zo dat 8 kaarten + tussenruimte altijd op één rij passen. */
+    --card-w: clamp(30px, calc((100vw - 44px) / 8), 44px);
+    --card-h: calc(var(--card-w) * 1.42);
+    --trick-size: calc(var(--card-w) * 3.7);
   }
 
   .topbar {
@@ -845,7 +846,8 @@ body {
     font-size: 1.05rem;
   }
   .hand {
-    gap: 4px;
+    gap: 3px;
+    flex-wrap: nowrap;
   }
 
   .panel {
@@ -866,14 +868,6 @@ body {
 }
 
 @media (max-width: 380px) {
-  :root {
-    --card-w: 34px;
-    --card-h: 49px;
-    --trick-size: 132px;
-  }
-  .hand {
-    gap: 3px;
-  }
   .card__rank {
     font-size: 0.82rem;
   }
