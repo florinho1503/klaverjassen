@@ -13,14 +13,14 @@ describe("App — render smoketest", () => {
   it("toont eerst het startscherm met drie niveaus", () => {
     const { container, getByText } = render(<App />);
     expect(container.textContent).toContain("Kies je niveau");
-    expect(getByText("Makkelijk")).toBeTruthy();
-    expect(getByText("Middel")).toBeTruthy();
-    expect(getByText("Moeilijk")).toBeTruthy();
+    expect(getByText("Beginner")).toBeTruthy();
+    expect(getByText("Gevorderd")).toBeTruthy();
+    expect(getByText("Expert")).toBeTruthy();
   });
 
   it("na niveau + start wordt gedeeld: 8 kaarten voor de mens, biedfase", () => {
     const { container, getByText } = render(<App />);
-    fireEvent.click(getByText("Makkelijk")); // niveau kiezen
+    fireEvent.click(getByText("Beginner")); // niveau kiezen
     fireEvent.click(getByText("Start het potje")); // potje starten (standaard 16 rondes)
     expect(container.querySelectorAll(".hand .card")).toHaveLength(8);
     expect(container.textContent).toContain("Bieden");

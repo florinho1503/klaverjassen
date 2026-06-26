@@ -15,19 +15,16 @@ import { partnerOf, trickWinnerSeat } from "./trick";
 
 export type Bot = (round: Round) => Card;
 
-export type Difficulty = "makkelijk" | "middel" | "moeilijk";
+export type Difficulty = "beginner" | "gevorderd" | "expert";
 
-/**
- * Kies de speelbot voor een niveau. Middel/moeilijk vallen voorlopig terug op
- * de heuristische bot; ze worden in fase 2 en 3 vervangen.
- */
+/** Kies de speelbot voor een niveau. */
 export function cardBotFor(difficulty: Difficulty): Bot {
   switch (difficulty) {
-    case "makkelijk":
+    case "beginner":
       return heuristicBot;
-    case "middel":
+    case "gevorderd":
       return mediumBot;
-    case "moeilijk":
+    case "expert":
       return hardBot;
   }
 }

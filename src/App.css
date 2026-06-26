@@ -420,6 +420,27 @@ body {
   background: #1b2c22;
   box-shadow: 0 0 0 2px rgba(255, 210, 74, 0.4);
 }
+.levelcard--disabled {
+  position: relative;
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.levelcard--disabled:hover {
+  transform: none;
+  border-color: #2f4a3b;
+}
+.levelcard__soon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #2f4a3b;
+  color: #cfe0d5;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
 
 .startscreen__format {
   display: flex;

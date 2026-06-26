@@ -13,22 +13,25 @@ import { BidOption, GameTarget, GameView, HUMAN, TelstaatRow, useGame } from "./
 import "./App.css";
 
 const LEVEL_META: Record<Difficulty, { emoji: string; label: string; desc: string }> = {
-  makkelijk: {
+  beginner: {
     emoji: "🟢",
-    label: "Makkelijk",
-    desc: "Beginnersbots. Geldige kaarten worden voor je opgelicht.",
+    label: "Beginner",
+    desc: "Eenvoudige bots, geldige kaarten worden voor je opgelicht en de coach is mild.",
   },
-  middel: {
+  gevorderd: {
     emoji: "🟡",
-    label: "Middel",
-    desc: "Slimmere bots (kaartgeheugen, troefbeheer, seinen). Geen hulp — je krijgt een foutmelding bij een ongeldige zet.",
+    label: "Gevorderd",
+    desc: "Slimmere bots (kaartgeheugen, troefbeheer, seinen). Geen hulp: foutmelding bij een ongeldige zet en strenge klop-regels.",
   },
-  moeilijk: {
+  expert: {
     emoji: "🔴",
-    label: "Moeilijk",
-    desc: "Sterke bots. Geen hulp — je krijgt een foutmelding bij een ongeldige zet.",
+    label: "Expert",
+    desc: "Sterkste bots (Monte-Carlo + bied-inferentie).",
   },
 };
+
+// Voorlopig speelbare niveaus.
+const AVAILABLE_LEVELS: Difficulty[] = ["beginner", "gevorderd"];
 
 function Stepper({
   label,
@@ -90,18 +93,25 @@ function StartScreen({ onStart }: { onStart: (d: Difficulty, t: GameTarget) => v
 
       <p className="startscreen__sub">1. Kies je niveau</p>
       <div className="startscreen__levels">
-        {(Object.keys(LEVEL_META) as Difficulty[]).map((d) => (
-          <button
-            key={d}
-            type="button"
-            className={`levelcard ${difficulty === d ? "levelcard--sel" : ""}`}
-            onClick={() => setDifficulty(d)}
-          >
-            <span className="levelcard__emoji">{LEVEL_META[d].emoji}</span>
-            <span className="levelcard__label">{LEVEL_META[d].label}</span>
-            <span className="levelcard__desc">{LEVEL_META[d].desc}</span>
-          </button>
-        ))}
+        {(Object.keys(LEVEL_META) as Difficulty[]).map((d) => {
+          const disabled = !AVAILABLE_LEVELS.includes(d);
+          return (
+            <button
+              key={d}
+              type="button"
+              className={`levelcard ${difficulty === d ? "levelcard--sel" : ""} ${
+                disabled ? "levelcard--disabled" : ""
+              }`}
+              onClick={() => !disabled && setDifficulty(d)}
+              disabled={disabled}
+            >
+              <span className="levelcard__emoji">{LEVEL_META[d].emoji}</span>
+              <span className="levelcard__label">{LEVEL_META[d].label}</span>
+              <span className="levelcard__desc">{LEVEL_META[d].desc}</span>
+              {disabled && <span className="levelcard__soon">Binnenkort</span>}
+            </button>
+          );
+        })}
       </div>
 
       <p className="startscreen__sub">2. Hoe lang speel je?</p>
@@ -398,7 +408,7 @@ function HumanHand({ view, onPlay }: { view: GameView; onPlay: (c: Card) => void
   return (
     <div className="hand">
       {sorted.map((card) => {
-        // 'makkelijk' (assist): geldige kaarten oplichten, ongeldige dimmen.
+        // 'beginner' (assist): geldige kaarten oplichten, ongeldige dimmen.
         // Anders: alle kaarten klikbaar, foutmelding volgt bij een ongeldige zet.
         const legal = isLegal(card);
         const playable = view.assist && canPlay && legal;

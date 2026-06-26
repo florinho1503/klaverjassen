@@ -73,9 +73,9 @@ export interface BidOption {
 export interface GameView {
   phase: Phase;
   difficulty: Difficulty | null;
-  /** Of geldige kaarten opgelicht worden (alleen op 'makkelijk'). */
+  /** Of geldige kaarten opgelicht worden (alleen op 'beginner'). */
   assist: boolean;
-  /** Foutmelding bij een ongeldige zet (middel/moeilijk), of null. */
+  /** Foutmelding bij een ongeldige zet (gevorderd/expert), of null. */
   error: PlayError | null;
   dealer: Seat;
   currentSeat: Seat;
@@ -205,9 +205,9 @@ export function useGame(): GameApi {
 
     const paused = pausedRef.current;
     const difficulty = difficultyRef.current;
-    const assist = difficulty === "makkelijk";
+    const assist = difficulty === "beginner";
 
-    // Geldige kaarten alleen oplichten op 'makkelijk'.
+    // Geldige kaarten alleen oplichten op 'beginner'.
     const legalForHuman =
       assist &&
       phase === "spelen" &&
@@ -315,7 +315,7 @@ export function useGame(): GameApi {
   const finalizeRound = useCallback(() => {
     const round = roundRef.current!;
     // Roem van ons team telt alleen bij een geklopte slag; foute klop straft
-    // (middel/moeilijk). Zie scoreWithKlop.
+    // (gevorderd/expert). Zie scoreWithKlop.
     const result = scoreWithKlop({
       contract: round.contract,
       bid: round.bid,
@@ -328,7 +328,7 @@ export function useGame(): GameApi {
       })),
       klopTeam: HUMAN_TEAM,
       klopped: kloppedRef.current,
-      strict: difficultyRef.current !== "makkelijk",
+      strict: difficultyRef.current !== "beginner",
     });
 
     resultRef.current = result;
@@ -543,7 +543,7 @@ export function useGame(): GameApi {
     if (last.roem > 0) {
       kloppedRef.current.add(idx);
       flashKlop(`👍 Goeie klop! +${last.roem} roem.`);
-    } else if (difficultyRef.current === "makkelijk") {
+    } else if (difficultyRef.current === "beginner") {
       flashKlop("Geen geldig klopje hier!");
     } else {
       kloppedRef.current.add(idx); // registreren voor de straf
@@ -560,12 +560,12 @@ export function useGame(): GameApi {
       !!last && last.winnerTeam === HUMAN_TEAM && last.roem > 0 && !kloppedRef.current.has(idx);
 
     if (forgotKlop) {
-      if (difficultyRef.current === "makkelijk") {
+      if (difficultyRef.current === "beginner") {
         // Herinner én blokkeer: je mag alsnog kloppen.
         flashKlop("💡 Vergeet niet te kloppen! Klik op 'Klop'.");
         return;
       }
-      // middel/moeilijk: roem vervalt
+      // gevorderd/expert: roem vervalt
       flashKlop(`Je vergat te kloppen — ${last.roem} roem vervallen.`);
     }
 
