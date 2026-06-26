@@ -392,7 +392,7 @@ function CardValuesHint() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        💡 Kaartwaardes {open ? "▲" : "▼"}
+        💡 <span className="hint__label">Kaartwaardes</span> {open ? "▲" : "▼"}
       </button>
       {open && (
         <div className="hint__panel">
@@ -421,7 +421,7 @@ function KlopHint() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        🃏 Klopjes {open ? "▲" : "▼"}
+        🃏 <span className="hint__label">Klopjes</span> {open ? "▲" : "▼"}
       </button>
       {open && (
         <div className="hint__panel">

@@ -809,34 +809,54 @@ body {
     /* Schaal de kaart zo dat 8 kaarten + tussenruimte altijd op één rij passen. */
     --card-w: clamp(30px, calc((100vw - 44px) / 8), 44px);
     --card-h: calc(var(--card-w) * 1.42);
-    --trick-size: calc(var(--card-w) * 3.7);
+    --trick-size: calc(var(--card-w) * 3);
   }
 
+  /* Compacte topbar: titel weg, spiekbriefjes alleen als icoon, kleinere maten. */
   .topbar {
     flex-wrap: wrap;
     justify-content: center;
-    gap: 6px 10px;
-    padding: 8px 10px;
+    gap: 4px 8px;
+    padding: 5px 8px;
   }
   .topbar h1 {
-    font-size: 0.95rem;
+    display: none;
+  }
+  .hint__label {
+    display: none;
+  }
+  .hint__toggle {
+    padding: 4px 8px;
   }
   .topbar__left {
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
     justify-content: center;
+  }
+  .troef {
+    padding: 2px 10px;
+  }
+  .troef__value {
+    font-size: 0.9rem;
   }
   .scoreboard {
     gap: 12px;
   }
+  .scoreboard__team {
+    font-size: 0.65rem;
+  }
   .scoreboard__team strong {
-    font-size: 1.1rem;
+    font-size: 1rem;
+  }
+  .levelbadge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
   }
 
   .table {
-    grid-template-columns: minmax(48px, auto) 1fr minmax(48px, auto);
-    gap: 4px;
-    padding: 8px;
+    grid-template-columns: minmax(44px, auto) 1fr minmax(44px, auto);
+    gap: 2px;
+    padding: 5px;
   }
 
   .card__rank {
@@ -1115,4 +1135,23 @@ body {
 }
 .btn--primary:hover {
   background: #1d4fd0;
+}
+
+/* Hand altijd op één rij op mobiel (moet ná de basis-.hand regel staan). */
+@media (max-width: 640px) {
+  .hand {
+    flex-wrap: nowrap;
+    gap: 3px;
+  }
+  /* Compactere tegenstander-stapels (meer overlap) om hoogte te besparen. */
+  .opponent__cards--left .card,
+  .opponent__cards--right .card {
+    margin-top: calc(var(--card-h) * -0.74);
+  }
+  .opponent__cards--top .card {
+    margin-left: calc(var(--card-w) * -0.55);
+  }
+  .opponent {
+    gap: 2px;
+  }
 }
