@@ -578,6 +578,70 @@ body {
   overflow-y: auto;
   padding: 16px 18px;
 }
+
+/* Uitleg & regels */
+.startscreen__rules-link {
+  margin-top: 16px;
+  background: none;
+  border: none;
+  color: #cfe0d5;
+  font-size: 0.95rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.startscreen__rules-link:hover {
+  color: #ffd24a;
+}
+.rulescard {
+  background: #0f1713;
+  border: 1px solid #2f4a3b;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+.rulescard__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  top: -16px;
+  background: #0f1713;
+  padding: 6px 0 10px;
+  margin: -6px 0 0;
+  border-bottom: 1px solid #1d2a22;
+}
+.rulescard__head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.rules h3 {
+  margin: 18px 0 6px;
+  font-size: 1rem;
+  color: #ffd24a;
+}
+.rules p {
+  margin: 6px 0;
+  line-height: 1.5;
+  font-size: 0.92rem;
+}
+.rules ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.rules li {
+  margin: 4px 0;
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+.rules__tables {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+}
 .reviewcard__head {
   display: flex;
   align-items: center;

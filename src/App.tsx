@@ -78,6 +78,7 @@ function StartScreen({ onStart }: { onStart: (d: Difficulty, t: GameTarget) => v
   const [format, setFormat] = useState<"rondes" | "punten">("rondes");
   const [rounds, setRounds] = useState(16);
   const [points, setPoints] = useState(100);
+  const [showRules, setShowRules] = useState(false);
 
   const start = () => {
     if (!difficulty) return;
@@ -140,6 +141,134 @@ function StartScreen({ onStart }: { onStart: (d: Difficulty, t: GameTarget) => v
       >
         {difficulty ? "Start het potje" : "Kies eerst een niveau"}
       </button>
+
+      <button type="button" className="startscreen__rules-link" onClick={() => setShowRules(true)}>
+        📖 Uitleg &amp; regels
+      </button>
+
+      {showRules && <RulesOverlay onClose={() => setShowRules(false)} />}
+    </div>
+  );
+}
+
+function RulesOverlay({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="rulescard" onClick={(e) => e.stopPropagation()}>
+        <div className="rulescard__head">
+          <h2>📖 Klaverjassen — uitleg &amp; regels</h2>
+          <button type="button" className="btn" onClick={onClose}>
+            Sluiten
+          </button>
+        </div>
+
+        <div className="rules">
+          <h3>Het doel</h3>
+          <ul>
+            <li>4 spelers, 2 teams: jij + Noord (je maat) tegen Oost + West.</li>
+            <li>32 kaarten (7 t/m aas), iedereen 8 kaarten.</li>
+            <li>
+              Eén team is <b>maker</b>: dat speelt en moet het geboden aantal punten halen. Lukt
+              dat niet, dan ga je <b>nat</b> — álle punten gaan dan naar de tegenpartij.
+            </li>
+            <li>
+              Je speelt met een <b>troefkleur</b>, of <b>sans</b> (zonder troef).
+            </li>
+          </ul>
+
+          <h3>Kaartwaardes</h3>
+          <div className="rules__tables">
+            <ValuesTable title="Troef" rows={TROEF_VALUES} />
+            <ValuesTable title="Niet-troef / sans" rows={PLAIN_VALUES} />
+          </div>
+          <p>
+            In <b>troef</b> zijn de boer (20) en 9 (14) de toppers; in <b>sans/niet-troef</b> zijn
+            ze juist (bijna) waardeloos. Aas en 10 zijn altijd 11 en 10. Totaal per spel:{" "}
+            <b>162</b> (troefspel) of <b>130</b> (sans). De laatste slag is <b>+10</b> waard.
+          </p>
+
+          <h3>Slagvolgorde — welke kaart wint</h3>
+          <ul>
+            <li>
+              <b>Troef</b> (hoog → laag): B → 9 → A → 10 → H → V → 8 → 7
+            </li>
+            <li>
+              <b>Niet-troef / sans</b>: A → 10 → H → V → B → 9 → 8 → 7
+            </li>
+            <li>Troef verslaat elke niet-troefkaart. Bij sans wint de hoogste kaart van de gevraagde kleur.</li>
+          </ul>
+
+          <h3>Bieden</h3>
+          <ul>
+            <li>Je biedt een getal + een kleur of sans. Het getal is je belofte (je nat-grens).</li>
+            <li>Het hoogste bod wint en wordt maker. Minimum: 80 voor een kleur, 70 voor sans; stappen van 10.</li>
+            <li>
+              <b>Passen haalt je er niet uit</b>: je mag er later alsnog overheen bieden. Het bieden
+              stopt pas als iedereen achter elkaar past.
+            </li>
+            <li>Tip: bied als opener het minimum — hoger bieden geeft geen extra punten, alleen meer nat-risico.</li>
+          </ul>
+
+          <h3>Spelen</h3>
+          <ul>
+            <li>
+              <b>Bekennen verplicht:</b> heb je de gevraagde kleur, dan moet je die spelen.
+            </li>
+            <li>
+              Kun je niet bekennen en wint je <b>maat</b> de slag → je hoeft niet te troeven (maatslag).
+            </li>
+            <li>
+              Kun je niet bekennen en wint de <b>tegenstander</b> → introeven verplicht (als je troef hebt).
+            </li>
+            <li>
+              <b>Overtroeven:</b> speel je troef, dan hoger dan de hoogste troef die er ligt — tenzij
+              dat niet kan. Je maat hoef je niet te overtroeven.
+            </li>
+          </ul>
+
+          <h3>Klopjes (roem)</h3>
+          <ul>
+            <li>Stuk (Heer + Vrouw van troef): 20</li>
+            <li>3 op een rij (zelfde kleur, opeenvolgend): 20</li>
+            <li>4 op een rij: 50 — met het stuk erin: 70</li>
+            <li>
+              In deze app: win je een slag met een klopje erin, klik dan zelf op <b>Klop</b> om 'm te
+              claimen. Klopjes gaan naar het team dat de slag wint — leg dus geen klopje vóór de
+              tegenstander.
+            </li>
+          </ul>
+
+          <h3>Pit</h3>
+          <p>Wint één team alle 8 de slagen, dan krijgt dat team <b>+100</b> bonus.</p>
+
+          <h3>Punten tellen</h3>
+          <ul>
+            <li>
+              Tel de punten van alle kaarten in de slagen die je team won (ook de kaarten die de
+              tegenstander erin legde), plus klopjes en +10 voor de laatste slag.
+            </li>
+            <li>De maker moet zijn bod halen, anders nat (alles naar de tegenpartij).</li>
+            <li>"Op papier": punten gedeeld door 10, afgerond (vanaf 7 omhoog).</li>
+          </ul>
+
+          <h3>Seinen (samenspel met je maat)</h3>
+          <p>
+            Als je maat aan slag ligt en jij gooit af: <b>7 / 8 / 9 = aanseinen</b> ("ik heb de aas
+            van deze kleur, speel 'm aub!"), <b>10 / B / H = afseinen</b> ("deze kleur wil ik niet").
+          </p>
+
+          <h3>Niveaus &amp; coach</h3>
+          <ul>
+            <li>
+              <b>🟢 Beginner:</b> geldige kaarten worden opgelicht, milde coach, klop-herinneringen.
+            </li>
+            <li>
+              <b>🟡 Gevorderd:</b> geen hulp, foutmelding bij een ongeldige zet, strenge klop-regels.
+            </li>
+            <li>Na elke ronde kun je met "Leer van je fouten" je eigen zetten laten nakijken.</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
