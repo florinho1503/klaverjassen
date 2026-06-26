@@ -487,17 +487,18 @@ function BiddingControls({
   options: BidOption[];
   onBid: (a: BidAction) => void;
 }) {
-  const [key, setKey] = useState<string>(optionKey(options[0].contract));
-  const selected = options.find((o) => optionKey(o.contract) === key) ?? options[0];
-  const min = selected.value;
-  const max = selected.contract.type === "sans" ? 130 : 160;
+  // Geen voorselectie: je moet zelf een contract aanklikken.
+  const [key, setKey] = useState<string | null>(null);
+  const selected = options.find((o) => optionKey(o.contract) === key) ?? null;
+  const min = selected ? selected.value : 0;
+  const max = selected && selected.contract.type === "sans" ? 130 : 160;
 
-  const [value, setValue] = useState(min);
+  const [value, setValue] = useState(0);
 
-  // Klem het bod als het minimum verandert (ander contract of nieuwe biedbeurt).
+  // Bij het kiezen van een contract (of een ander contract): klem het bod binnen [min, max].
   useEffect(() => {
-    setValue((v) => (v < min ? min : v > max ? max : v));
-  }, [min, max]);
+    if (selected) setValue((v) => (v < min ? min : v > max ? max : v));
+  }, [min, max, key]);
 
   return (
     <div className="bidcontrols">
@@ -512,42 +513,45 @@ function BiddingControls({
               onClick={() => setKey(k)}
             >
               {contractSymbol(o.contract)}
-              <small>min {o.value}</small>
             </button>
           );
         })}
       </div>
 
-      <div className="bidcontrols__stepper">
-        <button
-          type="button"
-          className="btn btn--step"
-          onClick={() => setValue((v) => Math.max(min, v - 10))}
-          disabled={value <= min}
-          aria-label="Bod verlagen"
-        >
-          ▼
-        </button>
-        <span className="bidcontrols__value">{value}</span>
-        <button
-          type="button"
-          className="btn btn--step"
-          onClick={() => setValue((v) => Math.min(max, v + 10))}
-          disabled={value >= max}
-          aria-label="Bod verhogen"
-        >
-          ▲
-        </button>
-      </div>
+      {selected && (
+        <div className="bidcontrols__stepper">
+          <button
+            type="button"
+            className="btn btn--step"
+            onClick={() => setValue((v) => Math.max(min, v - 10))}
+            disabled={value <= min}
+            aria-label="Bod verlagen"
+          >
+            ▼
+          </button>
+          <span className="bidcontrols__value">{value}</span>
+          <button
+            type="button"
+            className="btn btn--step"
+            onClick={() => setValue((v) => Math.min(max, v + 10))}
+            disabled={value >= max}
+            aria-label="Bod verhogen"
+          >
+            ▲
+          </button>
+        </div>
+      )}
 
       <div className="bidcontrols__actions">
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() => onBid({ value, contract: selected.contract })}
-        >
-          Bied {value} {contractSymbol(selected.contract)}
-        </button>
+        {selected && (
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => onBid({ value, contract: selected.contract })}
+          >
+            Bied {value} {contractSymbol(selected.contract)}
+          </button>
+        )}
         <button type="button" className="btn btn--pass" onClick={() => onBid("pas")}>
           Pas
         </button>
