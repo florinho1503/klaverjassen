@@ -891,6 +891,31 @@ body {
     max-width: calc(100vw - 16px);
     flex-wrap: wrap;
   }
+
+  /* Niveaukaarten naast elkaar i.p.v. onder elkaar. */
+  .startscreen {
+    padding: 16px;
+  }
+  .startscreen__levels {
+    flex-wrap: nowrap;
+    gap: 10px;
+    align-self: stretch;
+  }
+  .levelcard {
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 16px 12px;
+  }
+  .levelcard__emoji {
+    font-size: 1.4rem;
+  }
+  .levelcard__label {
+    font-size: 1.1rem;
+  }
+  .levelcard__desc {
+    font-size: 0.72rem;
+  }
 }
 
 @media (max-width: 380px) {
