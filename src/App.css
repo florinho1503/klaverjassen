@@ -880,10 +880,16 @@ body {
     max-height: 140px;
   }
 
-  /* Spiekbriefje (alleen makkelijk) niet buiten beeld laten vallen */
+  /* Spiekbriefje gecentreerd binnen beeld (anders valt het van het scherm). */
   .hint__panel {
-    left: auto;
-    right: 0;
+    position: fixed;
+    top: 50px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: calc(100vw - 16px);
+    flex-wrap: wrap;
   }
 }
 

@@ -6,7 +6,6 @@ import {
   SEAT_NAME,
   SUIT_SYMBOL,
   contractLabel,
-  contractShort,
   isRed,
 } from "./ui/display";
 import { BidOption, GameTarget, GameView, HUMAN, TelstaatRow, useGame } from "./ui/useGame";
@@ -286,6 +285,7 @@ export function App() {
     requestReview,
     closeReview,
   } = useGame();
+  const [openHint, setOpenHint] = useState<"kaart" | "klop" | null>(null);
 
   if (view.phase === "start") {
     return <StartScreen onStart={begin} />;
@@ -304,8 +304,18 @@ export function App() {
               {LEVEL_META[view.difficulty].emoji} {LEVEL_META[view.difficulty].label}
             </span>
           )}
-          {view.assist && <CardValuesHint />}
-          {view.assist && <KlopHint />}
+          {view.assist && (
+            <CardValuesHint
+              open={openHint === "kaart"}
+              onToggle={() => setOpenHint((h) => (h === "kaart" ? null : "kaart"))}
+            />
+          )}
+          {view.assist && (
+            <KlopHint
+              open={openHint === "klop"}
+              onToggle={() => setOpenHint((h) => (h === "klop" ? null : "klop"))}
+            />
+          )}
         </div>
         <TroefIndicator view={view} />
         <ScoreBoard view={view} />
@@ -382,16 +392,10 @@ function ValuesTable({ title, rows }: { title: string; rows: [string, number][] 
   );
 }
 
-function CardValuesHint() {
-  const [open, setOpen] = useState(false);
+function CardValuesHint({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   return (
     <div className="hint">
-      <button
-        type="button"
-        className="hint__toggle"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-      >
+      <button type="button" className="hint__toggle" onClick={onToggle} aria-expanded={open}>
         💡 <span className="hint__label">Kaartwaardes</span> {open ? "▲" : "▼"}
       </button>
       {open && (
@@ -411,16 +415,10 @@ const KLOP_RULES: [string, number][] = [
   ["4 op een rij + stuk", 70],
 ];
 
-function KlopHint() {
-  const [open, setOpen] = useState(false);
+function KlopHint({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   return (
     <div className="hint">
-      <button
-        type="button"
-        className="hint__toggle"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-      >
+      <button type="button" className="hint__toggle" onClick={onToggle} aria-expanded={open}>
         🃏 <span className="hint__label">Klopjes</span> {open ? "▲" : "▼"}
       </button>
       {open && (
@@ -548,17 +546,8 @@ function TrickView({ view }: { view: GameView }) {
           {slots[seat] ? <CardView card={slots[seat]!} /> : <div className="trick__empty" />}
         </div>
       ))}
-      {view.contract && (
-        <div className="trick__contract">
-          <span className={isContractRed(view) ? "red" : ""}>{contractShort(view.contract)}</span>
-        </div>
-      )}
     </div>
   );
-}
-
-function isContractRed(view: GameView): boolean {
-  return view.contract?.type === "kleur" && isRed(view.contract.troef);
 }
 
 function HumanHand({ view, onPlay }: { view: GameView; onPlay: (c: Card) => void }) {
