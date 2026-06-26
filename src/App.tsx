@@ -628,7 +628,7 @@ function Panel({
         <div className="panel__info">
           <strong>{SEAT_NAME[view.trickWinnerSeat]}</strong> wint de slag
           {view.trickPoints !== null && <> ({view.trickPoints} punten</>}
-          {view.trickRoem ? <>, +{view.trickRoem} roem</> : null}
+          {!view.canKlop && view.trickRoem ? <>, +{view.trickRoem} voor klopje</> : null}
           {view.trickPoints !== null && <>)</>}.{" "}
           <span className={wij ? "wij" : "zij"}>{wij ? "Voor ons." : "Voor hen."}</span>
           <span className="panel__tricks">

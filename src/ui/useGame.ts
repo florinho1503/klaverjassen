@@ -542,7 +542,7 @@ export function useGame(): GameApi {
 
     if (last.roem > 0) {
       kloppedRef.current.add(idx);
-      flashKlop(`👍 Goeie klop! +${last.roem} roem.`);
+      flashKlop(`👍 Goeie klop! +${last.roem} voor klopje.`);
     } else if (difficultyRef.current === "beginner") {
       flashKlop("Geen geldig klopje hier!");
     } else {
@@ -565,8 +565,8 @@ export function useGame(): GameApi {
         flashKlop("💡 Vergeet niet te kloppen! Klik op 'Klop'.");
         return;
       }
-      // gevorderd/expert: roem vervalt
-      flashKlop(`Je vergat te kloppen — ${last.roem} roem vervallen.`);
+      // gevorderd/expert: klopje vervalt
+      flashKlop(`Je vergat te kloppen — klopje van ${last.roem} vervallen.`);
     }
 
     pausedRef.current = false;
