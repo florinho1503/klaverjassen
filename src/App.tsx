@@ -93,25 +93,18 @@ function StartScreen({ onStart }: { onStart: (d: Difficulty, t: GameTarget) => v
 
       <p className="startscreen__sub">1. Kies je niveau</p>
       <div className="startscreen__levels">
-        {(Object.keys(LEVEL_META) as Difficulty[]).map((d) => {
-          const disabled = !AVAILABLE_LEVELS.includes(d);
-          return (
-            <button
-              key={d}
-              type="button"
-              className={`levelcard ${difficulty === d ? "levelcard--sel" : ""} ${
-                disabled ? "levelcard--disabled" : ""
-              }`}
-              onClick={() => !disabled && setDifficulty(d)}
-              disabled={disabled}
-            >
-              <span className="levelcard__emoji">{LEVEL_META[d].emoji}</span>
-              <span className="levelcard__label">{LEVEL_META[d].label}</span>
-              <span className="levelcard__desc">{LEVEL_META[d].desc}</span>
-              {disabled && <span className="levelcard__soon">Binnenkort</span>}
-            </button>
-          );
-        })}
+        {AVAILABLE_LEVELS.map((d) => (
+          <button
+            key={d}
+            type="button"
+            className={`levelcard ${difficulty === d ? "levelcard--sel" : ""}`}
+            onClick={() => setDifficulty(d)}
+          >
+            <span className="levelcard__emoji">{LEVEL_META[d].emoji}</span>
+            <span className="levelcard__label">{LEVEL_META[d].label}</span>
+            <span className="levelcard__desc">{LEVEL_META[d].desc}</span>
+          </button>
+        ))}
       </div>
 
       <p className="startscreen__sub">2. Hoe lang speel je?</p>

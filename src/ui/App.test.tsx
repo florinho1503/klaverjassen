@@ -15,7 +15,7 @@ describe("App — render smoketest", () => {
     expect(container.textContent).toContain("Kies je niveau");
     expect(getByText("Beginner")).toBeTruthy();
     expect(getByText("Gevorderd")).toBeTruthy();
-    expect(getByText("Expert")).toBeTruthy();
+    expect(container.textContent).not.toContain("Expert"); // voorlopig verborgen
   });
 
   it("na niveau + start wordt gedeeld: 8 kaarten voor de mens, biedfase", () => {
