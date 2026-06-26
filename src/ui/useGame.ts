@@ -127,6 +127,8 @@ export interface GameView {
   review: RoundReview | null;
   /** Staat de coach-overlay open? */
   reviewOpen: boolean;
+  /** Speelnauwkeurigheid over het hele potje (goede zetten / totaal), of null. */
+  accuracy: { good: number; total: number; pct: number } | null;
 }
 
 export interface GameApi {
@@ -164,6 +166,7 @@ export function useGame(): GameApi {
   const humanBidsRef = useRef<HumanBidTurn[]>([]);
   const reviewRef = useRef<RoundReview | null>(null);
   const reviewOpenRef = useRef(false);
+  const accuracyRef = useRef<{ good: number; total: number }>({ good: 0, total: 0 });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -286,6 +289,14 @@ export function useGame(): GameApi {
       canReview: phase === "klaar" && recordRef.current !== null,
       review: reviewRef.current,
       reviewOpen: reviewOpenRef.current,
+      accuracy:
+        accuracyRef.current.total > 0
+          ? {
+              good: accuracyRef.current.good,
+              total: accuracyRef.current.total,
+              pct: Math.round((accuracyRef.current.good / accuracyRef.current.total) * 100),
+            }
+          : null,
     };
   }, []);
 
@@ -415,6 +426,7 @@ export function useGame(): GameApi {
       targetRef.current = target;
       totalRef.current = [0, 0];
       historyRef.current = [];
+      accuracyRef.current = { good: 0, total: 0 };
       dealerRef.current = 3;
       startHand(dealerRef.current);
     },
@@ -433,6 +445,7 @@ export function useGame(): GameApi {
     messageRef.current = null;
     recordRef.current = null;
     reviewRef.current = null;
+    accuracyRef.current = { good: 0, total: 0 };
     sync();
   }, [sync]);
 
@@ -452,9 +465,15 @@ export function useGame(): GameApi {
 
   // Bereken de review automatisch zodra de ronde klaar is (zodat het aantal
   // fouten meteen op de knop staat). Draait na de paint, dus de eindstand is al zichtbaar.
+  // Telt meteen de nauwkeurigheid (goede zetten) over het hele potje op.
   useEffect(() => {
     if (phaseRef.current === "klaar" && recordRef.current && !reviewRef.current) {
-      reviewRef.current = reviewRound(recordRef.current, { determinizations: 200, rng: Math.random });
+      const r = reviewRound(recordRef.current, { determinizations: 200, rng: Math.random });
+      reviewRef.current = r;
+      accuracyRef.current = {
+        good: accuracyRef.current.good + r.good,
+        total: accuracyRef.current.total + r.decisions.length,
+      };
       sync();
     }
   });

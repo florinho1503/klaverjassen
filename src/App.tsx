@@ -843,7 +843,10 @@ function RoundSummary({ view }: { view: GameView }) {
       )}{" "}
       Punten — Wij: {r.points[0]} (op papier {r.paper[0]}) · Zij: {r.points[1]} (op papier {r.paper[1]}).
       {r.pitTeam !== null && <strong> Pit voor {r.pitTeam === 0 ? "ons" : "hen"}! (+100)</strong>}
-      <div className="panel__progress">{progressLabel(view)}</div>
+      <div className="panel__progress">
+        {progressLabel(view)}
+        {view.accuracy && <> · 🎯 nauwkeurigheid {view.accuracy.pct}%</>}
+      </div>
     </div>
   );
 }
@@ -864,6 +867,12 @@ function GameOver({ view }: { view: GameView }) {
       </div>
       Eindstand op papier — Wij: <strong>{view.totalScore[0]}</strong> · Zij:{" "}
       <strong>{view.totalScore[1]}</strong> (na {view.telstaat.length} rondes).
+      {view.accuracy && (
+        <div className="gameover__accuracy">
+          🎯 Jouw speelnauwkeurigheid: <strong>{view.accuracy.pct}%</strong> ({view.accuracy.good}{" "}
+          van {view.accuracy.total} zetten goed)
+        </div>
+      )}
     </div>
   );
 }

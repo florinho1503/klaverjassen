@@ -476,6 +476,11 @@ body {
   font-weight: 800;
   margin-bottom: 6px;
 }
+.gameover__accuracy {
+  margin-top: 8px;
+  font-size: 1rem;
+  color: #ffd24a;
+}
 
 .telstaat {
   max-height: 168px;
