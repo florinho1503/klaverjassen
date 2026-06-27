@@ -1,0 +1,9 @@
+name = "klaverjassen-stats"
+main = "src/index.js"
+compatibility_date = "2024-09-01"
+
+# Vul na het aanmaken van de KV-namespace de id hieronder in:
+#   wrangler kv namespace create STATS
+[[kv_namespaces]]
+binding = "STATS"
+id = "VUL_KV_NAMESPACE_ID_IN"

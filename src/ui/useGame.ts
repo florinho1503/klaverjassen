@@ -2,6 +2,7 @@
 // score) met de mens op Zuid (seat 2) en bots op de andere drie plekken.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { trackGameStart } from "./analytics";
 import {
   Auction,
   AuctionLogEntry,
@@ -422,6 +423,7 @@ export function useGame(): GameApi {
 
   const begin = useCallback(
     (difficulty: Difficulty, target: GameTarget) => {
+      trackGameStart();
       difficultyRef.current = difficulty;
       targetRef.current = target;
       totalRef.current = [0, 0];
