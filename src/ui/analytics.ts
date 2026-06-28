@@ -4,7 +4,7 @@
 // Vul hier de URL van je gedeployde Worker in (zonder slash op het eind),
 // bv. "https://klaverjassen-stats.<jouw-subdomein>.workers.dev".
 // Zolang dit leeg is, gebeurt er niets.
-const STATS_URL: string = "";
+const STATS_URL: string = "https://klaverjassen-stats.tam-floris.workers.dev";
 
 function deviceId(): string {
   try {
